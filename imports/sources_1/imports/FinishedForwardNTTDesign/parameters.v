@@ -1,0 +1,100 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 06/29/2022 04:49:27 PM
+// Design Name: 
+// Module Name: parameters
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+// ---ITERATION PARAMETERS
+`define ONE_CYCLE_ITERATION 1
+`define TWO_CYCLE_ITERATION 2
+`define EIGHT_CYCLE_ITERATION 8
+`define THIRTY_FOUR_CYCLE_ITERATION 34
+`define FULL_CYCLE_ITERATION 610
+`define ITERATIONS `TWO_CYCLE_ITERATION
+`define ITERATION_DEPTH $clog2(`ITERATIONS)
+
+`define BATCH_DEPTH     5
+`define BATCH_SIZE      (1 << `BATCH_DEPTH)
+
+`define RING_SIZE       (1 << 6)
+`define LOG_N 10
+`define NTT_VECTOR_SIZE (1<<`LOG_N)
+`define RING_DEPTH       ($clog2(`RING_SIZE))
+`define STAGE_SIZE      `RING_DEPTH
+`define NTT_DIV_BY_RING (1024>>`RING_DEPTH)
+`define BSK_SIZE        (`RING_SIZE*`L*`NTT_DIV_BY_RING*`ITERATIONS)
+`define COUNTER_SIZE       ($clog2(`NTT_DIV_BY_RING*`ITERATIONS*`BATCH_SIZE))
+`define CMUX_COUNTER_SIZE ($clog2(`NTT_DIV_BY_RING*`FULL_CYCLE_ITERATION*`BATCH_SIZE))
+`define BSK_COUNTER_SIZE       ($clog2(`NTT_DIV_BY_RING*`ITERATIONS*`L))
+
+`define PRECOMP_FACTOR   1 //changes depending on whether we do K-red or mod-red or something else
+`define PRECOMP_FACTOR_NORMAL_MULT   524289
+`define INVERSE_N 785665
+`define BUTTERFLY_SIZE  (`RING_SIZE>>1)
+`define MODULUS_WIDTH   20
+`define GOLD_MODULUS_WIDTH 20
+`define HBM_ELEMENT_SIZE 16
+`define HBM_ELEMENT_DEPTH 4
+`define MODULUS       20'b11000000000000000001
+//`define MODULUSHALF     {1'b0,(`MODULUS>>1)}
+`define MODULUSHALFPLUSONE     {1'b0,(`MODULUS>>1)+1}
+`define MODULUSEIGHTH    {3'b0,`MODULUS>>3}
+`define SECTIONS 4 //`MODULUS/5
+`define TWIDDLE_2048 730626
+`define INVERSE_TWIDDLE_2048 70756
+
+`define STREAM_SIZE 32
+`define STREAM_ADDR_WIDTH  ($clog2(`STREAM_SIZE))
+`define STREAM_COUNTER_SIZE (`RING_SIZE*`RING_SIZE*`GOLD_MODULUS_WIDTH>>`STREAM_ADDR_WIDTH)
+`define COUNTER_WIDTH (($clog2(`STREAM_COUNTER_SIZE))+1)
+`define ADDR_WIDTH ($clog2(`GOLD_MODULUS_WIDTH))
+`define HBM_WIDTH 32
+`define STAGE_REDUCTION 3
+
+`define BRAM_SIZE (2*`RING_SIZE)
+
+`define MULTIPLIER_LATENCY 4
+`define REDUCTION_LATENCY 2
+`define NTT_4096_LATENCY 321
+`define PEARL_LATENCY 5
+
+`define BUTTER_FLY_REGISTERS (`PEARL_LATENCY+2)  
+`define JEWEL_REGISTERS 2
+`define TAIL_REDUCTION 2
+// ------------------------------------------------
+// FINAL parameters
+`define L 7 
+`define L_WIDTH ($clog2(`L))
+`define L_CEIL 1<<`L_WIDTH
+`define B_BSK_WIDTH 3 //$ceil(`MODULUS_WIDTH/`L)
+
+`define FIRST_NTT_LATENCY (`JEWEL_REGISTERS*`RING_DEPTH+`TAIL_REDUCTION)
+`define FORWARD_NTT_1024_LATENCY (`MATRIX_TRANSPOSE_LATENCY+(`JEWEL_REGISTERS*`LOG_N+2*`TAIL_REDUCTION)+`MULTIPLIER_LATENCY+`REDUCTION_LATENCY)
+
+
+`define MATRIX_TRANSPOSE_LATENCY ((`LOG_N-`RING_DEPTH)+1+`NTT_DIV_BY_RING+3+(`LOG_N-`RING_DEPTH)+1)
+`define NTT_1024_LATENCY (2*`MATRIX_TRANSPOSE_LATENCY+(`JEWEL_REGISTERS*`LOG_N+2*`TAIL_REDUCTION)+`MULTIPLIER_LATENCY+`REDUCTION_LATENCY)
+//`define MAC_LATENCY (14+`MULTIPLIER_LATENCY+1+`REDUCTION_LATENCY+`L_WIDTH+1+`REDUCTION_LATENCY)
+`define MAC_LATENCY (14+`MULTIPLIER_LATENCY+1+`REDUCTION_LATENCY+2+`REDUCTION_LATENCY)
+
+`define EXTERNAL_PRODUCT_LATENCY (`MATRIX_TRANSPOSE_LATENCY+`L+1+`FORWARD_NTT_1024_LATENCY+`MAC_LATENCY+`NTT_1024_LATENCY)
+`define CMUX_LATENCY (2+`STAGE_SIZE+1+`NTT_DIV_BY_RING+3+2)
+
