@@ -23,8 +23,8 @@
 
 module efficient_adder_no_3 #(parameter INPUT_WIDTH = `MODULUS_WIDTH+2, parameter OUTPUT_WIDTH = `MODULUS_WIDTH+3) (
  input clk,
- input [`MODULUS_WIDTH+2-1:0] input_a,
- input [`MODULUS_WIDTH+2-1:0] input_b,
+ input [INPUT_WIDTH-1:0] input_a,
+ input [INPUT_WIDTH-1:0] input_b,
  input [INPUT_WIDTH-1:0] input_c,
  output [OUTPUT_WIDTH-1:0] sum
     );
@@ -34,8 +34,8 @@ module efficient_adder_no_3 #(parameter INPUT_WIDTH = `MODULUS_WIDTH+2, paramete
  assign BBUS[0] = 1'b0;
  assign c_in[0] = 1'b0;
  wire [((OUTPUT_WIDTH>>3)+1<<3)-1:0] a_padded, b_padded, c_padded, sum_padded;
- assign a_padded = { {(((OUTPUT_WIDTH>>3)+1<<3)-(`MODULUS_WIDTH+2)){1'b0}} , input_a};
- assign b_padded = { {(((OUTPUT_WIDTH>>3)+1<<3)-(`MODULUS_WIDTH+2)){1'b0}} , input_b};
+ assign a_padded = { {(((OUTPUT_WIDTH>>3)+1<<3)-(INPUT_WIDTH)){1'b0}} , input_a};
+ assign b_padded = { {(((OUTPUT_WIDTH>>3)+1<<3)-(INPUT_WIDTH)){1'b0}} , input_b};
  assign c_padded = { {(((OUTPUT_WIDTH>>3)+1<<3)-INPUT_WIDTH){1'b0}} , input_c};   
  
  

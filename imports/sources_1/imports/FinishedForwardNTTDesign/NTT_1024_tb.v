@@ -36,15 +36,42 @@ always #5 clk=~clk;
 
 
 
- matrix_rectangular_transpose #(.direction("FORWARD")) matrix_1(clk, reset, NTT_IN_wire, data_valid,data_ntt_valid_2, NTT_IN_wire_2);
+//matrix_rectangular_transpose #(.direction("FORWARD")) matrix_1(clk, reset, NTT_IN_wire, data_valid,data_ntt_valid_2, NTT_IN_wire_2);
 
-NTT_1024 NTT_1024_element(clk, reset, NTT_IN_wire_2, data_ntt_valid_2,data_ntt_valid_3, NTT_IN_wire_3);
+//NTT_1024 NTT_1024_element(clk, reset, NTT_IN_wire_2, data_ntt_valid_2,data_ntt_valid_3, NTT_IN_wire_3);
+function [`MODULUS_WIDTH-1:0] modular_pow;
+ input [2*`MODULUS_WIDTH-1:0] base;
+ input [`MODULUS_WIDTH-1:0] exponent;
+ input [`MODULUS_WIDTH-1:0] modulus;
 
- matrix_rectangular_transpose #(.direction("FORWARD")) matrix_3(clk, reset, NTT_IN_wire_3, data_ntt_valid_3,data_valid_out, NTT_OUT_wire);
+ begin
+     if (modulus == 1) begin
+        modular_pow = 0;
+     end else begin
+        modular_pow = 1;
+        while ( exponent > 0) begin
+            if (exponent[0] == 1)
+                modular_pow = ({20'b0,modular_pow} * base) % modulus;
+            exponent = exponent >> 1;
+            base = (base * base) % modulus;
+        
+        end
+     end
+ end
+endfunction
+// NTT_128
+NTT_const_mult #(.STREAM_SIZE(`RING_SIZE), 
+.PSI(modular_pow(`TWIDDLE_2048, 1, `MODULUS)), 
+.OMEGA(modular_pow(`TWIDDLE_2048, 2, `MODULUS)), 
+.PRECOMP_FACTOR(`PRECOMP_FACTOR)) 
+NTT_128_instance(clk,NTT_IN_wire,data_valid, data_valid_out, NTT_OUT_wire);
+
+
+// matrix_rectangular_transpose #(.direction("FORWARD")) matrix_3(clk, reset, NTT_IN_wire_3, data_ntt_valid_3,data_valid_out, NTT_OUT_wire);
 
 initial begin
-	$readmemh("D:/Jonas/Google Drive/KULeuven6/ZPRICE/pythonGeneratorCode/Quinten/NTT_IN_1024.txt", NTT_IN);
-	$readmemh("D:/Jonas/Google Drive/KULeuven6/ZPRICE/pythonGeneratorCode/Quinten/NTT_OUT_1024.txt", NTT_OUT);
+	$readmemh("D:/Jonas/Google Drive/KULeuven8/ACompendiumOfButterflies/PythonChasingButterflies/NTT_IN_256.txt", NTT_IN);
+	$readmemh("D:/Jonas/Google Drive/KULeuven8/ACompendiumOfButterflies/PythonChasingButterflies/NTT_OUT_256.txt", NTT_OUT);
 end
 
 

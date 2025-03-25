@@ -28,6 +28,86 @@ module reduction_tail_ntt
     output [`MODULUS_WIDTH-1:0] data_out
     );
     
+    
+
+function [63:0] LUT_reduce_below;
+ input [4:0] LUT_index_output_0;
+ input [4:0] index;
+ integer i_iterator_add_one;
+ integer full_output_add_one;
+ begin
+    for (i_iterator_add_one=0; i_iterator_add_one<64; i_iterator_add_one=i_iterator_add_one+1) begin
+        full_output_add_one = (i_iterator_add_one[4:0] << (index))%`MODULUS;
+        //full_output = 0;
+        LUT_reduce_below[i_iterator_add_one] = i_iterator_add_one[5] ^ full_output_add_one[LUT_index_output_0];
+    end
+ end
+endfunction      
+    
+
+
+
+wire [`MODULUS_WIDTH+4-1:0] input_a_reductor;
+wire [`MODULUS_WIDTH+1-1:0] mult_final_sum_small_a_red;
+wire [`MODULUS_WIDTH-1:0] mult_final_sum_raw_a_red;
+generate
+genvar output_a_iterator;
+genvar i;
+for (output_a_iterator=0; output_a_iterator< `MODULUS_WIDTH+4; output_a_iterator=output_a_iterator+1) begin
+    if (output_a_iterator < (`MODULUS_WIDTH+ADDED_WIDTH)) begin
+        assign input_a_reductor[output_a_iterator] = data_in[output_a_iterator];
+    end else begin
+        assign input_a_reductor[output_a_iterator] = 1'b0;
+    end
+end
+
+
+
+
+for (i=0; i<`MODULUS_WIDTH; i=i+1) begin: LUTS_END
+      LUT6 #(
+     .INIT(LUT_reduce_below(i,`MODULUS_WIDTH-1))  // Specify LUT Contents
+     //.INIT(64'b0)  // Specify LUT Contents
+      ) LUT6_inst (   // LUT general output
+          .O(mult_final_sum_raw_a_red[i]), // 1-bit LUT6 output
+         .I0(input_a_reductor[`MODULUS_WIDTH-1]), // LUT input
+         .I1(input_a_reductor[`MODULUS_WIDTH]), // LUT input
+         .I2(input_a_reductor[`MODULUS_WIDTH+1]), // LUT input
+         .I3(input_a_reductor[`MODULUS_WIDTH+2]), // LUT input
+         .I4(input_a_reductor[`MODULUS_WIDTH+3]), // LUT input
+         .I5(input_a_reductor[i])  // LUT input
+      );
+  end
+endgenerate
+    wire [`MODULUS_WIDTH-1:0] CO_a_red;
+    wire [8-1:0] last_output_rounded_CO_a_red;
+    wire [8-1:0] last_output_rounded_O_a_red;
+     CARRY8 #(
+      .CARRY_TYPE("SINGLE_CY8")  // 8-bit or dual 4-bit carry (DUAL_CY4, SINGLE_CY8)
+  )
+  CARRY8_inst_0_to_7 (
+      .CO(CO_a_red[7:0]),         // 8-bit output: Carry-out
+      .O(mult_final_sum_small_a_red[7:0]),           // 8-bit output: Carry chain XOR data out
+      .CI(1'b0),         // 1-bit input: Lower Carry-In
+      .CI_TOP(1'b0), // 1-bit input: Upper Carry-In
+      .DI(input_a_reductor[7:0]),         // 8-bit input: Carry-MUX data in
+      .S(mult_final_sum_raw_a_red[7:0])            // 8-bit input: Carry-mux select
+  ); 
+
+   CARRY8 #(
+      .CARRY_TYPE("SINGLE_CY8")  // 8-bit or dual 4-bit carry (DUAL_CY4, SINGLE_CY8)
+  )
+    CARRY8_inst_16_to_19 (
+      .CO(last_output_rounded_CO_a_red),         // 8-bit output: Carry-out
+      .O(last_output_rounded_O_a_red),           // 8-bit output: Carry chain XOR data out
+      .CI(CO_a_red[7]),         // 1-bit input: Lower Carry-In
+      .CI_TOP(1'bx), // 1-bit input: Upper Carry-In
+      .DI({4'bx, 1'b0,input_a_reductor[10:8]}),         // 8-bit input: Carry-MUX data in
+      .S({4'bx,mult_final_sum_raw_a_red[11:8]})            // 8-bit input: Carry-mux select
+  );
+    assign mult_final_sum_small_a_red[`MODULUS_WIDTH] = CO_a_red[`MODULUS_WIDTH-1];
+    assign CO_a_red[11:8] = last_output_rounded_CO_a_red[3:0];
+    assign mult_final_sum_small_a_red[11:8] = last_output_rounded_O_a_red[3:0];
 
 
 
@@ -45,12 +125,7 @@ wire [`MODULUS_WIDTH+1-1:0] add_mod_option0;
 wire [`MODULUS_WIDTH+1-1:0] add_mod_option1;
 reg [`GOLD_MODULUS_WIDTH+2-1:0] a_reg;
 
-assign a =  data_in[`MODULUS_WIDTH+ADDED_WIDTH-1:18];
-assign b =  data_in[17:0];
- 
-assign three_times_b = (b<<1) + b;
 
-assign reduction_to_21_bit = three_times_b-a;//a is less than 2^22-2^20+4
 
 
 assign add_mod_option0 = reduction_to_21_bit_reg;
@@ -62,7 +137,7 @@ assign data_out = result_high_reg;
 
 always @(posedge clk) begin
     result_high_reg <= result_high;
-    reduction_to_21_bit_reg <= reduction_to_21_bit;
+    reduction_to_21_bit_reg <= mult_final_sum_small_a_red;
 
 end
 

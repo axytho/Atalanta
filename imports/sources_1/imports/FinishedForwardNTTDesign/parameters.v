@@ -34,12 +34,12 @@
 `define BATCH_DEPTH     5
 `define BATCH_SIZE      (1 << `BATCH_DEPTH)
 
-`define RING_SIZE       (1 << 6)
-`define LOG_N 10
+`define RING_SIZE       (1 << 8)
+`define LOG_N 8
 `define NTT_VECTOR_SIZE (1<<`LOG_N)
 `define RING_DEPTH       ($clog2(`RING_SIZE))
 `define STAGE_SIZE      `RING_DEPTH
-`define NTT_DIV_BY_RING (1024>>`RING_DEPTH)
+`define NTT_DIV_BY_RING (`NTT_VECTOR_SIZE>>`RING_DEPTH)
 `define BSK_SIZE        (`RING_SIZE*`L*`NTT_DIV_BY_RING*`ITERATIONS)
 `define COUNTER_SIZE       ($clog2(`NTT_DIV_BY_RING*`ITERATIONS*`BATCH_SIZE))
 `define CMUX_COUNTER_SIZE ($clog2(`NTT_DIV_BY_RING*`FULL_CYCLE_ITERATION*`BATCH_SIZE))
@@ -47,19 +47,19 @@
 
 `define PRECOMP_FACTOR   1 //changes depending on whether we do K-red or mod-red or something else
 `define PRECOMP_FACTOR_NORMAL_MULT   524289
-`define INVERSE_N 785665
+`define INVERSE_N 3329
 `define BUTTERFLY_SIZE  (`RING_SIZE>>1)
-`define MODULUS_WIDTH   20
-`define GOLD_MODULUS_WIDTH 20
+`define MODULUS_WIDTH   12
+`define GOLD_MODULUS_WIDTH 12
 `define HBM_ELEMENT_SIZE 16
 `define HBM_ELEMENT_DEPTH 4
-`define MODULUS       20'b11000000000000000001
+`define MODULUS       12'b110100000001
 //`define MODULUSHALF     {1'b0,(`MODULUS>>1)}
 `define MODULUSHALFPLUSONE     {1'b0,(`MODULUS>>1)+1}
 `define MODULUSEIGHTH    {3'b0,`MODULUS>>3}
-`define SECTIONS 4 //`MODULUS/5
-`define TWIDDLE_2048 730626
-`define INVERSE_TWIDDLE_2048 70756
+`define SECTIONS 3 //`MODULUS/5
+`define TWIDDLE_2048 17
+`define INVERSE_TWIDDLE_2048 1175
 
 `define STREAM_SIZE 32
 `define STREAM_ADDR_WIDTH  ($clog2(`STREAM_SIZE))

@@ -34,28 +34,26 @@ module butterfly_jewel //Currently 49341 LUTS ad 63805 FFs with this version
 #(parameter TWIDDLE = 0, parameter DIRECTION = "FORWARD", parameter STAGE = 1)
 (
     input clk,
-    input [$clog2(`MODULUS*(1+(STAGE)*5))-1:0] input_a, // the two here is from the fact that our mult increases everything by a factor 5.
-    input [$clog2(`MODULUS*(1+(STAGE)*5))-1:0] input_b,
-    output [$clog2(`MODULUS*(1+(STAGE+1)*5))-1:0] output_a,
-    output [$clog2(`MODULUS*(1+(STAGE+1)*5))-1:0] output_b
+    input [`MODULUS_WIDTH+(STAGE>0)*3-1:0] input_a, // the two here is from the fact that our mult increases everything by a factor 5.
+    input [`MODULUS_WIDTH+(STAGE>0)*3-1:0] input_b,
+    output [`MODULUS_WIDTH+3-1:0] output_a,
+    output [`MODULUS_WIDTH+3-1:0] output_b
     );
-localparam input_width = $clog2(`MODULUS*(1+(STAGE)*5));
-localparam output_width = $clog2(`MODULUS*(1+(STAGE+1)*5));
+localparam input_width = (STAGE==0) ? `MODULUS_WIDTH : `MODULUS_WIDTH+3;
+localparam output_width = `MODULUS_WIDTH+3;
 
 localparam stage_greater_than_zero = (STAGE>0);
-wire [`MODULUS_WIDTH+5-1:0] mult_input;
-wire [`MODULUS_WIDTH+1-1:0] mult_output_0;
-wire [`MODULUS_WIDTH+1-1:0] mult_output_1;
+wire [`MODULUS_WIDTH+3-1:0] mult_input;
+wire [`MODULUS_WIDTH-1:0] mult_output_0;
+wire [`MODULUS_WIDTH-1:0] mult_output_1;
 wire [`MODULUS_WIDTH-1:0] mult_output_2;
 wire [`MODULUS_WIDTH+2-1:0] mult_final_sum;
-wire [`MODULUS_WIDTH-1:0] mult_final_sum_raw;
-wire [`MODULUS_WIDTH+1-1:0] mult_final_sum_small;
-reg [`MODULUS_WIDTH+1-1:0] mult_final_sum_small_reg;
+reg [`MODULUS_WIDTH+2-1:0] mult_final_sum_reg;
+reg [output_width-1:0] input_a_reg;
 
 reg [output_width-1:0] output_a_reg;
 reg [output_width-1:0] output_b_reg;
 reg [`MODULUS_WIDTH+2-1:0] full_sum_reg;
-reg [input_width-1:0] input_a_reg;
 function [`MODULUS_WIDTH-1:0] modular_mult;
  input [2*`MODULUS_WIDTH-1:0] input1;
  input [2*`MODULUS_WIDTH-1:0] input2;
@@ -65,25 +63,21 @@ function [`MODULUS_WIDTH-1:0] modular_mult;
      modular_mult = (input1 * input2) % modulus;
  end
 endfunction  
-function [63:0] LUT_parameter_add_one_bit;
+function [63:0] LUT_parameter_add_one_bit_no_twiddle;
  input [4:0] LUT_index_output_0;
- input [2:0] part;
+ input [3:0] index;
  integer i_iterator_add_one;
  integer full_output_add_one;
  begin
     for (i_iterator_add_one=0; i_iterator_add_one<64; i_iterator_add_one=i_iterator_add_one+1) begin
-        full_output_add_one = modular_mult((i_iterator_add_one[4:0] << (part*5))%`MODULUS, TWIDDLE, `MODULUS);
+        full_output_add_one = modular_mult((i_iterator_add_one[4:0] << (index))%`MODULUS, 1, `MODULUS);
         //full_output = 0;
-        LUT_parameter_add_one_bit[i_iterator_add_one] = i_iterator_add_one[5] ^ full_output_add_one[LUT_index_output_0];
+        LUT_parameter_add_one_bit_no_twiddle[i_iterator_add_one] = i_iterator_add_one[5] ^ full_output_add_one[LUT_index_output_0];
     end
  end
 endfunction  
-always @(posedge clk) begin
-    input_a_reg <= input_a;
-end
-generate
-genvar i;
-if (~(TWIDDLE==1)) begin
+
+
     //TODO: MAKE PARAMETRIC IF YOU WANT THIS TO WORK FOR MULTIPLE MODULUS WIDTHs
     
     grayhairstreak #(.TWIDDLE(TWIDDLE)) gray_hairstreak_inst 
@@ -97,99 +91,24 @@ if (~(TWIDDLE==1)) begin
     compressor_from_3_to_final_form
     (
     .clk(clk),
-    .input_a({1'b0,mult_output_0}),
-    .input_b({1'b0,mult_output_1}),
+    .input_a(mult_output_0),
+    .input_b(mult_output_1),
     .input_c(mult_output_2),
     .sum(mult_final_sum)
     );
     always @(posedge clk) begin
-    output_a_reg <= mult_final_sum + input_a_reg;
-    output_b_reg <= `MODULUS*5+input_a_reg-mult_final_sum;
+    mult_final_sum_reg <= mult_final_sum;
+    output_a_reg <= mult_final_sum_reg + input_a_reg;
+    output_b_reg <= `MODULUS*3+input_a_reg-mult_final_sum_reg;
     end
      
- 
-end else if ((TWIDDLE==1) && (STAGE>1)) begin 
-
-    
-    for (i=0; i<`MODULUS_WIDTH; i=i+1) begin: LUTS_END
-          LUT6 #(
-         .INIT(LUT_parameter_add_one_bit(i,`SECTIONS))  // Specify LUT Contents
-          ) LUT6_inst (   // LUT general output
-              .O(mult_final_sum_raw[i]), // 1-bit LUT6 output
-             .I0(mult_input[(`SECTIONS)*5]), // LUT input
-             .I1(mult_input[(`SECTIONS)*5+1]), // LUT input
-             .I2(mult_input[(`SECTIONS)*5+2]), // LUT input
-             .I3(mult_input[(`SECTIONS)*5+3]), // LUT input
-             .I4(mult_input[(`SECTIONS)*5+4]), // LUT input
-             .I5(mult_input[i])  // LUT input
-          );
-      end
-    wire [`MODULUS_WIDTH-1:0] CO;
-    wire [8-1:0] last_output_rounded_CO;
-    wire [8-1:0] last_output_rounded_O;
-     CARRY8 #(
-      .CARRY_TYPE("SINGLE_CY8")  // 8-bit or dual 4-bit carry (DUAL_CY4, SINGLE_CY8)
-  )
-  CARRY8_inst_0_to_7 (
-      .CO(CO[7:0]),         // 8-bit output: Carry-out
-      .O(mult_final_sum_small[7:0]),           // 8-bit output: Carry chain XOR data out
-      .CI(1'b0),         // 1-bit input: Lower Carry-In
-      .CI_TOP(1'b0), // 1-bit input: Upper Carry-In
-      .DI(mult_input[7:0]),         // 8-bit input: Carry-MUX data in
-      .S(mult_final_sum_raw[7:0])            // 8-bit input: Carry-mux select
-  );
-   CARRY8 #(
-      .CARRY_TYPE("SINGLE_CY8")  // 8-bit or dual 4-bit carry (DUAL_CY4, SINGLE_CY8)
-  )
-  CARRY8_inst_8_to_15 (
-      .CO(CO[15:8]),         // 8-bit output: Carry-out
-      .O(mult_final_sum_small[15:8]),           // 8-bit output: Carry chain XOR data out
-      .CI(CO[7]),         // 1-bit input: Lower Carry-In
-      .CI_TOP(1'b0), // 1-bit input: Upper Carry-In
-      .DI(mult_input[15:8]),         // 8-bit input: Carry-MUX data in
-      .S(mult_final_sum_raw[15:8])            // 8-bit input: Carry-mux select
-  );
-   CARRY8 #(
-      .CARRY_TYPE("SINGLE_CY8")  // 8-bit or dual 4-bit carry (DUAL_CY4, SINGLE_CY8)
-  )
-    CARRY8_inst_16_to_19 (
-      .CO(last_output_rounded_CO),         // 8-bit output: Carry-out
-      .O(last_output_rounded_O),           // 8-bit output: Carry chain XOR data out
-      .CI(CO[15]),         // 1-bit input: Lower Carry-In
-      .CI_TOP(1'bx), // 1-bit input: Upper Carry-In
-      .DI({4'bx,mult_input[19:16]}),         // 8-bit input: Carry-MUX data in
-      .S({4'bx,mult_final_sum_raw[19:16]})            // 8-bit input: Carry-mux select
-  );
-    assign mult_final_sum_small[`MODULUS_WIDTH] = CO[`MODULUS_WIDTH-1];
-    assign CO[19:16] = last_output_rounded_CO[3:0];
-    assign mult_final_sum_small[19:16] = last_output_rounded_O[3:0];
-    always @(posedge clk) begin
-        mult_final_sum_small_reg <= mult_final_sum_small;
-        output_a_reg <= mult_final_sum_small_reg + input_a_reg;
-        output_b_reg <= `MODULUS*5+input_a_reg-mult_final_sum_small_reg;
-    end
-  
-end else begin
-    // MULT = 1 version:
-    reg [input_width-1:0] input_b_reg;
-    
-    always @(posedge clk) begin
-        input_b_reg <= input_b;
-    end
-    assign full_sum = input_b_reg;
-    always @(posedge clk) begin
-    output_a_reg <= input_b_reg + input_a_reg;
-    output_b_reg <= `MODULUS*5+input_a_reg-input_b_reg;
-end
-end
-endgenerate
 
 
 
 
-
+generate
 genvar mult_iterator;
-for (mult_iterator=0; mult_iterator< `MODULUS_WIDTH+5; mult_iterator=mult_iterator+1) begin
+for (mult_iterator=0; mult_iterator< `MODULUS_WIDTH+3; mult_iterator=mult_iterator+1) begin
     if (mult_iterator < input_width) begin
         assign mult_input[mult_iterator] = input_b[mult_iterator];
     end else begin
@@ -197,7 +116,63 @@ for (mult_iterator=0; mult_iterator< `MODULUS_WIDTH+5; mult_iterator=mult_iterat
     end
 end
 
-
+wire [`MODULUS_WIDTH+3-1:0] input_a_reductor;
+genvar output_a_iterator;
+for (output_a_iterator=0; output_a_iterator< `MODULUS_WIDTH+3; output_a_iterator=output_a_iterator+1) begin
+    if (output_a_iterator < input_width) begin
+        assign input_a_reductor[output_a_iterator] = input_a[output_a_iterator];
+    end else begin
+        assign input_a_reductor[output_a_iterator] = 1'b0;
+    end
+end
+wire [`MODULUS_WIDTH+1-1:0] mult_final_sum_small_a_red;
+wire [`MODULUS_WIDTH-1:0] mult_final_sum_raw_a_red;
+genvar i;
+ for (i=0; i<`MODULUS_WIDTH; i=i+1) begin: LUTS_END
+          LUT6 #(
+         .INIT(LUT_parameter_add_one_bit_no_twiddle(i, `MODULUS_WIDTH))  // Specify LUT Contents
+          ) LUT6_inst (   // LUT general output
+              .O(mult_final_sum_raw_a_red[i]), // 1-bit LUT6 output
+             .I0(input_a_reductor[`MODULUS_WIDTH]), // LUT input
+             .I1(input_a_reductor[`MODULUS_WIDTH+1]), // LUT input
+             .I2(input_a_reductor[`MODULUS_WIDTH+2]), // LUT input
+             .I3(1'b0), // LUT input
+             .I4(1'b0), // LUT input
+             .I5(input_a_reductor[i])  // LUT input
+          );
+      end
+    wire [`MODULUS_WIDTH-1:0] CO_a_red;
+    wire [8-1:0] last_output_rounded_CO_a_red;
+    wire [8-1:0] last_output_rounded_O_a_red;
+     CARRY8 #(
+      .CARRY_TYPE("SINGLE_CY8")  // 8-bit or dual 4-bit carry (DUAL_CY4, SINGLE_CY8)
+  )
+  CARRY8_inst_0_to_7 (
+      .CO(CO_a_red[7:0]),         // 8-bit output: Carry-out
+      .O(mult_final_sum_small_a_red[7:0]),           // 8-bit output: Carry chain XOR data out
+      .CI(1'b0),         // 1-bit input: Lower Carry-In
+      .CI_TOP(1'b0), // 1-bit input: Upper Carry-In
+      .DI(input_a_reductor[7:0]),         // 8-bit input: Carry-MUX data in
+      .S(mult_final_sum_raw_a_red[7:0])            // 8-bit input: Carry-mux select
+  );
+   CARRY8 #(
+      .CARRY_TYPE("SINGLE_CY8")  // 8-bit or dual 4-bit carry (DUAL_CY4, SINGLE_CY8)
+  )
+    CARRY8_inst_16_to_19 (
+      .CO(last_output_rounded_CO_a_red),         // 8-bit output: Carry-out
+      .O(last_output_rounded_O_a_red),           // 8-bit output: Carry chain XOR data out
+      .CI(CO_a_red[7]),         // 1-bit input: Lower Carry-In
+      .CI_TOP(1'bx), // 1-bit input: Upper Carry-In
+      .DI({4'bx, input_a_reductor[11:8]}),         // 8-bit input: Carry-MUX data in
+      .S({4'bx,mult_final_sum_raw_a_red[11:8]})            // 8-bit input: Carry-mux select
+  );
+    assign mult_final_sum_small_a_red[`MODULUS_WIDTH] = CO_a_red[`MODULUS_WIDTH-1];
+    assign CO_a_red[11:8] = last_output_rounded_CO_a_red[3:0];
+    assign mult_final_sum_small_a_red[11:8] = last_output_rounded_O_a_red[3:0];
+endgenerate
+always @(posedge clk) begin
+    input_a_reg <= {2'b0, mult_final_sum_small_a_red};
+end
 assign output_a = output_a_reg;
 assign output_b = output_b_reg;
 

@@ -30,9 +30,10 @@ module NTT_const_mult #(parameter STREAM_SIZE = 32, parameter PSI = 1, parameter
     output [STREAM_SIZE*(`MODULUS_WIDTH)-1:0] data_out
     );
 localparam STREAM_DEPTH = ($clog2(STREAM_SIZE));
-localparam REDUCTION_ADDED_WIDTH = ($clog2(`MODULUS*((STREAM_DEPTH)*5+1)))- `MODULUS_WIDTH;
-localparam REDUCTION_ADDED_WIDTH_GS_MAX = ($clog2(`MODULUS*5)+STREAM_DEPTH)- `MODULUS_WIDTH;
-//localparam STAGE_REDUCTION = (STREAM_SIZE>(1<<(`LOG_N>>1))) ? (STREAM_DEPTH>>1) : 32'hdeadbeef;
+localparam STREAM_DEPTH_MODDED = STREAM_DEPTH-1;
+
+localparam REDUCTION_ADDED_WIDTH = 3;
+//localparam REDUCTION_ADDED_WIDTH_GS_MAX = ($clog2(`MODULUS*5)+STREAM_DEPTH)- `MODULUS_WIDTH;
 localparam STAGE_REDUCTION = `STAGE_REDUCTION;
 
 //localparam REDUCTION_ADDED_WIDTH_GS = (STREAM_SIZE>(1<<(`LOG_N>>1))) ?  $clog2(`MODULUS*5)- `MODULUS_WIDTH : ($clog2(`MODULUS*5))- `MODULUS_WIDTH;
@@ -41,16 +42,17 @@ localparam REDUCTION_ADDED_WIDTH_GS = ($clog2(`MODULUS*5)+(STREAM_DEPTH%STAGE_RE
 wire [`MODULUS_WIDTH-1:0] data_out_bit_reversed [0:STREAM_SIZE-1];
 
 // DATA_VALID delay
-shift_reg_data_valid #(`JEWEL_REGISTERS*STREAM_DEPTH+`TAIL_REDUCTION) shift_instance (clk, data_valid, data_valid_out);
+shift_reg_data_valid #(`JEWEL_REGISTERS*STREAM_DEPTH_MODDED+`TAIL_REDUCTION) shift_instance (clk, data_valid, data_valid_out);
 
 generate
 if (DIRECTION=="FORWARD") begin
-    wire [`MODULUS_WIDTH+REDUCTION_ADDED_WIDTH-1:0] internal_wiring [0:STREAM_SIZE*(STREAM_DEPTH+1)-1];
+    wire [`MODULUS_WIDTH+REDUCTION_ADDED_WIDTH-1:0] internal_wiring [0:STREAM_SIZE*(STREAM_DEPTH_MODDED+1)-1];
 
     genvar k;
     for(k = 0; k < STREAM_SIZE; k=k+1) begin: BIT_REVERSE_INDEX
         //assign data_out_bit_reversed[bit_inverse(k[STREAM_DEPTH-1:0])] = internal_wiring[STREAM_DEPTH*STREAM_SIZE + k];
-        reduction_tail_ntt #(.ADDED_WIDTH(REDUCTION_ADDED_WIDTH)) reduction(.clk(clk), .data_in(internal_wiring[STREAM_DEPTH*STREAM_SIZE + k]), .data_out(data_out_bit_reversed[bit_inverse(k[STREAM_DEPTH-1:0])]));
+        //TODO: probably the last two elements won't have to be bitreversed, so the bit_reverse function will have to be slightly modified.
+        reduction_tail_ntt #(.ADDED_WIDTH(REDUCTION_ADDED_WIDTH)) reduction(.clk(clk), .data_in(internal_wiring[STREAM_DEPTH_MODDED*STREAM_SIZE + k]), .data_out(data_out_bit_reversed[bit_inverse(k[STREAM_DEPTH-1:0])]));
     end
     genvar i;
     for(i = 0; i < STREAM_SIZE; i=i+1) begin: INITIAL
@@ -60,7 +62,7 @@ if (DIRECTION=="FORWARD") begin
     genvar block_number;
     genvar twiddle_exponent;
     genvar reduction_index;
-        for(stage = 0; stage < STREAM_DEPTH; stage=stage+1) begin: STAGE_LOOP
+        for(stage = 0; stage < STREAM_DEPTH_MODDED; stage=stage+1) begin: STAGE_LOOP
             for (block_number = 0; block_number < (1<<stage); block_number=block_number+1) begin: BLOCK_LOOP
                     for (twiddle_exponent = 0; twiddle_exponent  < (STREAM_SIZE>>(stage+1)); twiddle_exponent = twiddle_exponent + 1) begin :  INSIDE_BLOCK
                     // 244715 = psi^32 mod Q
@@ -68,8 +70,8 @@ if (DIRECTION=="FORWARD") begin
                             butterfly_jewel #(
                             .TWIDDLE(
                             modular_mult(
-                            modular_mult(PRECOMP_FACTOR, modular_pow(PSI,STREAM_SIZE>>(stage+1), `MODULUS ) ,`MODULUS),
-                            modular_pow(OMEGA, bit_inverse(block_number)>>1, `MODULUS),
+                            modular_mult(PRECOMP_FACTOR, modular_pow(PSI,STREAM_SIZE>>(stage+2), `MODULUS ) ,`MODULUS),
+                            modular_pow(OMEGA, bit_inverse(block_number)>>2, `MODULUS),
                             `MODULUS)
                             ),
                             .STAGE(stage)
@@ -83,7 +85,7 @@ if (DIRECTION=="FORWARD") begin
             end
         end
 end else begin
-    wire [`MODULUS_WIDTH+REDUCTION_ADDED_WIDTH_GS_MAX-1:0] internal_wiring [0:STREAM_SIZE*(STREAM_DEPTH+1)-1];
+   /* wire [`MODULUS_WIDTH+REDUCTION_ADDED_WIDTH_GS_MAX-1:0] internal_wiring [0:STREAM_SIZE*(STREAM_DEPTH+1)-1];
 
     genvar i;
     for(i = 0; i < STREAM_SIZE; i=i+1) begin: INITIAL
@@ -121,7 +123,7 @@ end else begin
                         .output_b(internal_wiring[(stage+1)*STREAM_SIZE+2*block_number*(STREAM_SIZE>>(stage+1)) + twiddle_exponent + (STREAM_SIZE>>(stage+1))]));
                 end
             end
-        end
+        end*/
 end
 endgenerate
 
@@ -165,7 +167,7 @@ function [`MODULUS_WIDTH-1:0] modular_mult;
  end
 endfunction
 
-function [STREAM_DEPTH-1:0] bit_inverse;
+function [STREAM_DEPTH-1:0] bit_inverse;//TODO: FIX TO DEAL WITH KYBER PARAMETERS
  input [STREAM_DEPTH-1:0] normal_order;
  integer index_bitreverse;
  begin
