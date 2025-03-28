@@ -23,7 +23,7 @@
 module hw_eval_wrapper(
     input clk,
     input [`MODULUS_WIDTH-1:0] random_input,
-    output [`MODULUS_WIDTH-1:0] random_output,
+    output [`RING_SIZE>>2-1:0] random_output,
     output data_valid_out_quick
     );
     
@@ -31,24 +31,42 @@ module hw_eval_wrapper(
 //always @(posedge clk)
 //counter <= counter+1;
 //end
-wire [`MODULUS_WIDTH-1:0] output_raw;
 wire [`RING_SIZE*`MODULUS_WIDTH-1:0] random_output_raw;
 
 reg [`RING_SIZE*`MODULUS_WIDTH-1:0] randomness;
 always @(posedge clk) begin
     randomness <= {random_input, randomness[`RING_SIZE*`MODULUS_WIDTH-1:`MODULUS_WIDTH]};
 end
-assign random_output = output_raw;
-INTT_1024 NTT_hw_eval(
-    .clk(clk),
-    .data_in(randomness),
-    .data_valid(randomness[0]),
-    .data_valid_out(data_valid_out_quick),
-    .data_out(random_output_raw)
-    );
+function [`MODULUS_WIDTH-1:0] modular_pow;
+ input [2*`MODULUS_WIDTH-1:0] base;
+ input [`MODULUS_WIDTH-1:0] exponent;
+ input [`MODULUS_WIDTH-1:0] modulus;
+
+ begin
+     if (modulus == 1) begin
+        modular_pow = 0;
+     end else begin
+        modular_pow = 1;
+        while ( exponent > 0) begin
+            if (exponent[0] == 1)
+                modular_pow = ({20'b0,modular_pow} * base) % modulus;
+            exponent = exponent >> 1;
+            base = (base * base) % modulus;
+        
+        end
+     end
+ end
+endfunction
+NTT_const_mult #(.STREAM_SIZE(`RING_SIZE), 
+.PSI(modular_pow(`TWIDDLE_2048, 1, `MODULUS)), 
+.OMEGA(modular_pow(`TWIDDLE_2048, 2, `MODULUS)), 
+.PRECOMP_FACTOR(`PRECOMP_FACTOR)) 
+NTT_128_instance(clk,randomness,randomness[0], data_valid_out_quick, random_output_raw);
+
+
 generate
 genvar i;
-for (i=0;i<16;i=i+1) begin
+for (i=0;i<(`RING_SIZE>>2);i=i+1) begin
 assign random_output[i] = ^random_output_raw[4*`MODULUS_WIDTH*i+:4*`MODULUS_WIDTH];
 end
 endgenerate

@@ -64,7 +64,7 @@ end
 
 
 
-for (i=0; i<`MODULUS_WIDTH; i=i+1) begin: LUTS_END
+for (i=0; i<`MODULUS_WIDTH-1; i=i+1) begin: LUTS_END
       LUT6 #(
      .INIT(LUT_reduce_below(i,`MODULUS_WIDTH-1))  // Specify LUT Contents
      //.INIT(64'b0)  // Specify LUT Contents
@@ -78,6 +78,21 @@ for (i=0; i<`MODULUS_WIDTH; i=i+1) begin: LUTS_END
          .I5(input_a_reductor[i])  // LUT input
       );
   end
+  
+  //FOR THE 11TH BIT, WE DO A SPECIAL THING AS HERE YOU'RE ADDING WITH 0
+        LUT6 #(
+     .INIT(LUT_reduce_below(`MODULUS_WIDTH-1,`MODULUS_WIDTH-1))  // Specify LUT Contents
+     //.INIT(64'b0)  // Specify LUT Contents
+      ) LUT6_inst (   // LUT general output
+          .O(mult_final_sum_raw_a_red[`MODULUS_WIDTH-1]), // 1-bit LUT6 output
+         .I0(input_a_reductor[`MODULUS_WIDTH-1]), // LUT input
+         .I1(input_a_reductor[`MODULUS_WIDTH]), // LUT input
+         .I2(input_a_reductor[`MODULUS_WIDTH+1]), // LUT input
+         .I3(input_a_reductor[`MODULUS_WIDTH+2]), // LUT input
+         .I4(input_a_reductor[`MODULUS_WIDTH+3]), // LUT input
+         .I5(1'b0)  // LUT input
+      );
+  
 endgenerate
     wire [`MODULUS_WIDTH-1:0] CO_a_red;
     wire [8-1:0] last_output_rounded_CO_a_red;
@@ -129,9 +144,9 @@ reg [`GOLD_MODULUS_WIDTH+2-1:0] a_reg;
 
 
 assign add_mod_option0 = reduction_to_21_bit_reg;
-assign add_mod_option1 = reduction_to_21_bit_reg+`MODULUS;
+assign add_mod_option1 = reduction_to_21_bit_reg-`MODULUS;
 
-assign result_high = reduction_to_21_bit_reg[`MODULUS_WIDTH+1-1] ? add_mod_option1 : add_mod_option0;
+assign result_high = add_mod_option1[`MODULUS_WIDTH] ? add_mod_option0 : add_mod_option1;
 
 assign data_out = result_high_reg;
 

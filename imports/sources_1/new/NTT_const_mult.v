@@ -52,7 +52,7 @@ if (DIRECTION=="FORWARD") begin
     for(k = 0; k < STREAM_SIZE; k=k+1) begin: BIT_REVERSE_INDEX
         //assign data_out_bit_reversed[bit_inverse(k[STREAM_DEPTH-1:0])] = internal_wiring[STREAM_DEPTH*STREAM_SIZE + k];
         //TODO: probably the last two elements won't have to be bitreversed, so the bit_reverse function will have to be slightly modified.
-        reduction_tail_ntt #(.ADDED_WIDTH(REDUCTION_ADDED_WIDTH)) reduction(.clk(clk), .data_in(internal_wiring[STREAM_DEPTH_MODDED*STREAM_SIZE + k]), .data_out(data_out_bit_reversed[bit_inverse(k[STREAM_DEPTH-1:0])]));
+        reduction_tail_ntt #(.ADDED_WIDTH(REDUCTION_ADDED_WIDTH)) reduction(.clk(clk), .data_in(internal_wiring[STREAM_DEPTH_MODDED*STREAM_SIZE + k]), .data_out(data_out_bit_reversed[(k[STREAM_DEPTH-1:0])]));
     end
     genvar i;
     for(i = 0; i < STREAM_SIZE; i=i+1) begin: INITIAL
