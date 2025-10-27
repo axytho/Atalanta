@@ -4,17 +4,13 @@
 // Author: Jonas Bertels on behalf of COSIC, KU Leuven
 // MAY NOT BE REPRODUCED
 
-
-`define RING_SIZE       (1 << 8)
 `define LOG_N 8
+`define RING_SIZE       (1 << 8)
 `define NTT_VECTOR_SIZE (1<<`LOG_N)
 `define RING_DEPTH       ($clog2(`RING_SIZE))
 `define STAGE_SIZE      `RING_DEPTH
 `define NTT_DIV_BY_RING (`NTT_VECTOR_SIZE>>`RING_DEPTH)
-`define BSK_SIZE        (`RING_SIZE*`L*`NTT_DIV_BY_RING*`ITERATIONS)
-`define COUNTER_SIZE       ($clog2(`NTT_DIV_BY_RING*`ITERATIONS*`BATCH_SIZE))
-`define CMUX_COUNTER_SIZE ($clog2(`NTT_DIV_BY_RING*`FULL_CYCLE_ITERATION*`BATCH_SIZE))
-`define BSK_COUNTER_SIZE       ($clog2(`NTT_DIV_BY_RING*`ITERATIONS*`L))
+
 
 
 `define PRECOMP_FACTOR   1 //changes depending on whether we do K-red or mod-red or something else
