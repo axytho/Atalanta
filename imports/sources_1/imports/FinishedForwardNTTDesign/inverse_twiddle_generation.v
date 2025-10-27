@@ -34,7 +34,7 @@ parameter TWIDDLE_INDEX=0
     
 reg [`RING_DEPTH-1:0] counter;
 reg [`GOLD_MODULUS_WIDTH-1:0] twiddle_output;
-wire [`GOLD_MODULUS_WIDTH-1:0] OMEGA [`RING_SIZE-1:0];
+wire [`GOLD_MODULUS_WIDTH-1:0] OMEGA [`COEF_PER_CLOCK_CYCLE-1:0];
 
 assign twiddle = twiddle_output;
 

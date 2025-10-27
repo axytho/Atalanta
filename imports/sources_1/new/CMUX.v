@@ -25,12 +25,12 @@ input clk,
 input reset,
 //data_valid does not actually do much, beyond tell when the first elements are coming in. 
 // there is an necessity to feed in the data in blocks of at least of 32.
-input [`RING_SIZE*`MODULUS_WIDTH-1:0] data_in,
+input [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] data_in,
 input data_valid, 
-input [`RING_SIZE*`MODULUS_WIDTH-1:0] data_in_coefficients,
+input [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] data_in_coefficients,
 input data_coef_valid,//signals that the incomming data is coef data to be stored in BRAM
 output data_valid_out,
-output [`RING_SIZE*`MODULUS_WIDTH-1:0] data_out
+output [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] data_out
 );
 
 //---------------------------------------- COUNTER OF BLOCKS ---------------------------------------------
@@ -74,10 +74,10 @@ end
 
 
 
-wire [(`LOG_N+1)-1:0] coef_addr_block [`RING_SIZE-1:0];
+wire [(`LOG_N+1)-1:0] coef_addr_block [`COEF_PER_CLOCK_CYCLE-1:0];
 generate
 genvar m;
-    for (m= 0; m<`RING_SIZE; m=m+1) begin: CRAM_loop
+    for (m= 0; m<`COEF_PER_CLOCK_CYCLE; m=m+1) begin: CRAM_loop
     BRAM_custom  #(.RAM_DEPTH(`NTT_DIV_BY_RING*`BATCH_SIZE), .RAM_WIDTH((`LOG_N+1))) coef_storage_space (
       .clka(clk),  // input wire CLK
       .dina(data_in_coefficients[m*`MODULUS_WIDTH+:(`LOG_N+1)]),      // input wire [9 : 0] D
@@ -107,12 +107,12 @@ assign coefficient = coef_addr_block[counter_of_cycles_reg_2[`LOG_N-`RING_DEPTH+
 wire  [`RING_DEPTH-1:0] shift; 
 wire coef_sign;
 wire data_memory_valid;
-wire [`RING_SIZE*`MODULUS_WIDTH-1:0] data_memory_in;
+wire [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] data_memory_in;
 
 
 wire [(`LOG_N+1)-1:0] coef_from_barrel;
 
-reg [`RING_SIZE*`MODULUS_WIDTH-1:0] data_in_reg, data_in_reg_2;
+reg [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] data_in_reg, data_in_reg_2;
 reg data_valid_reg, data_valid_reg_2;
 always @(posedge clk) begin
     data_in_reg <= data_in;
@@ -142,8 +142,8 @@ barrel_shifter barrel_instance(clk,data_in_reg_2, shift, data_valid_reg_2, data_
 //Control logic
 wire data_barrel_valid;
 wire [`LOG_N-`RING_DEPTH+1-1:0] write_addr;
-wire [(`LOG_N-`RING_DEPTH+1)*`RING_SIZE-1:0] read_addr;
-wire [`RING_SIZE-1:0] sign_data;
+wire [(`LOG_N-`RING_DEPTH+1)*`COEF_PER_CLOCK_CYCLE-1:0] read_addr;
+wire [`COEF_PER_CLOCK_CYCLE-1:0] sign_data;
 addr_generation_unit_CMUX control(.clk(clk), .reset(reset),
 .invert_coef(invert_coef),
 .data_valid_in(data_memory_valid),// THIS HAS A LATENCY OF 35 cycles
@@ -155,10 +155,10 @@ addr_generation_unit_CMUX control(.clk(clk), .reset(reset),
 
 
 // BRAM
-wire [`GOLD_MODULUS_WIDTH-1:0] data_out_bram [0:(`RING_SIZE)-1];
+wire [`GOLD_MODULUS_WIDTH-1:0] data_out_bram [0:(`COEF_PER_CLOCK_CYCLE)-1];
 generate
     genvar i;
-    for(i = 0; i < `RING_SIZE; i=i+1) begin: BUTTERFLIES
+    for(i = 0; i < `COEF_PER_CLOCK_CYCLE; i=i+1) begin: BUTTERFLIES
 BRAM_custom #(
             .RAM_WIDTH(`GOLD_MODULUS_WIDTH),
             .RAM_DEPTH(2*(`NTT_DIV_BY_RING)),
@@ -175,10 +175,10 @@ BRAM_custom #(
     end
 endgenerate
 
-wire [`RING_SIZE*`MODULUS_WIDTH-1:0] data_buffer_out;
+wire [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] data_buffer_out;
 generate
 genvar n;
-for (n= 0; n<`RING_SIZE; n=n+1) begin: NON_MODIFIED_MEM
+for (n= 0; n<`COEF_PER_CLOCK_CYCLE; n=n+1) begin: NON_MODIFIED_MEM
 shift_reg_width  #(.shift((`RING_DEPTH+1)+`NTT_DIV_BY_RING+3), .width(`MODULUS_WIDTH)) coef_storage_space (
   .clk(clk),  // input wire CLK
   .data_in(data_in_reg_2[n*`MODULUS_WIDTH+:`MODULUS_WIDTH]),      // input wire [9 : 0] D
@@ -190,7 +190,7 @@ endgenerate
 
 generate
     genvar l;
-    for(l = 0; l < `RING_SIZE; l=l+1) begin: ADD_SUBTACT
+    for(l = 0; l < `COEF_PER_CLOCK_CYCLE; l=l+1) begin: ADD_SUBTACT
         add_subtract  sum_difference (
       .clk(clk),  // input wire CLK
       .input_a(data_out_bram[l]),

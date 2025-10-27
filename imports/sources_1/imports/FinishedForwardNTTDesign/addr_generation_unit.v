@@ -21,7 +21,7 @@
 
 `include "parameters.v" 
 `include "ntt_params.v"
-module addr_generation_unit #(parameter STREAM_SIZE = `RING_SIZE) (
+module addr_generation_unit #(parameter STREAM_SIZE = `COEF_PER_CLOCK_CYCLE) (
     input clk,
     input reset,
     input data_valid_in,

@@ -28,7 +28,7 @@ input [`LOG_N+1-1:0] data_in,
 input data_valid_in,
 output data_valid_out, //we're going to use the convention that gen_acc starts running as soon as it has enough information
 // and thus that the coefficients should be fed in before the b's
-output [`RING_SIZE*`MODULUS_WIDTH-1:0] data_out
+output [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] data_out
     );
     
     
@@ -75,7 +75,7 @@ always @(posedge clk) begin
         counter_out <= 0;
     end else if (start) begin
         counter_out <= counter_out + 1;
-    end else if (counter_out==`NTT_DIV_BY_RING*`BATCH_SIZE-1 && start) begin//technically, this statement is not necessary if ring_size and batch_size are powers of two
+    end else if (counter_out==`NTT_DIV_BY_RING*`BATCH_SIZE-1 && start) begin//technically, this statement is not necessary if COEF_PER_CLOCK_CYCLE and batch_size are powers of two
         counter_out <= 0;
     end else begin
         counter_out <= counter_out;
@@ -95,9 +95,9 @@ shift_reg_width_CE  #(.shift(`BATCH_SIZE), .width(`LOG_N+1)) coef_storage_space 
 // acc = +-modulus/8    
 generate
     genvar l;
-    wire [`LOG_N+1:0] coefficient [0:`RING_SIZE-1];
-    for(l = 0; l < `RING_SIZE; l=l+1) begin: ADD_SUBTACT //the minus one makes it so it goes up to, but not including coef
-       assign coefficient[l] =  b_out[`LOG_N-1:0] - (l+`RING_SIZE*counter_out[(`LOG_N-`RING_DEPTH)-1:0]) - 1; 
+    wire [`LOG_N+1:0] coefficient [0:`COEF_PER_CLOCK_CYCLE-1];
+    for(l = 0; l < `COEF_PER_CLOCK_CYCLE; l=l+1) begin: ADD_SUBTACT //the minus one makes it so it goes up to, but not including coef
+       assign coefficient[l] =  b_out[`LOG_N-1:0] - (l+`COEF_PER_CLOCK_CYCLE*counter_out[(`LOG_N-`RING_DEPTH)-1:0]) - 1; 
        assign data_out[l*`MODULUS_WIDTH+:`MODULUS_WIDTH] = (coefficient[l][`LOG_N] ^ b_out[`LOG_N]) ? (`MODULUSEIGHTH) : (`MODULUS - `MODULUSEIGHTH);
     end
 endgenerate 

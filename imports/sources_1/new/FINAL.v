@@ -63,11 +63,11 @@ always @(posedge clk) begin
     
 end
 
-reg [`MODULUS_WIDTH*`RING_SIZE-1:0] data_in_reg;
-wire [`MODULUS_WIDTH*`RING_SIZE-1:0] data_in_aligned;
+reg [`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE-1:0] data_in_reg;
+wire [`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE-1:0] data_in_aligned;
 generate
     genvar a;
-    for (a=0; a<`RING_SIZE; a=a+1) begin: DATA_REROUTE
+    for (a=0; a<`COEF_PER_CLOCK_CYCLE; a=a+1) begin: DATA_REROUTE
         assign data_in_aligned[a*`MODULUS_WIDTH+:`MODULUS_WIDTH] = data_in[a*`HBM_WIDTH+:`MODULUS_WIDTH];
     end
 endgenerate
@@ -97,8 +97,8 @@ end
 
 
 
-wire [`RING_SIZE*`MODULUS_WIDTH-1:0] CMUX_in, gen_acc_out;
-wire [`RING_SIZE*`MODULUS_WIDTH-1:0] CMUX_out;
+wire [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] CMUX_in, gen_acc_out;
+wire [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] CMUX_out;
 wire CMUX_valid, CMUX_valid_out;
 
 
@@ -114,7 +114,7 @@ end
 wire data_valid_out_gen_acc;
 // ---------------------- ACC GEN section (the primer)
 gen_acc gen_acc_instance(.clk(clk), .rst(buffered_reset),
-.data_in(data_in_reg[(`MODULUS_WIDTH)*(`RING_SIZE-1)+:`LOG_N+1]),
+.data_in(data_in_reg[(`MODULUS_WIDTH)*(`COEF_PER_CLOCK_CYCLE-1)+:`LOG_N+1]),
 .data_valid_in(gen_acc_valid),
 .data_valid_out(data_valid_out_gen_acc),
 .data_out(gen_acc_out)
@@ -126,33 +126,33 @@ assign CMUX_valid = (data_valid_out_gen_acc || CMUX_datapath_valid_out) && state
 CMUX cmux_instance(.clk(clk), .reset(buffered_reset), 
 .data_in(CMUX_in), 
 .data_valid(CMUX_valid), 
-.data_in_coefficients(data_in_reg[`RING_SIZE*`MODULUS_WIDTH-1:0]),// we load the coefficients in 32x blocks, but the zeroes are padding, and part of the padding also includes the b.
+.data_in_coefficients(data_in_reg[`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0]),// we load the coefficients in 32x blocks, but the zeroes are padding, and part of the padding also includes the b.
 // this last part makes sense for FINAL, where we are not using 1024 coefficients, but less than this, and so we have the space (simplifying the control logic)
 .data_coef_valid(coef_valid), 
 .data_valid_out(CMUX_valid_out), 
 .data_out(CMUX_out));
 
-wire [`RING_SIZE*`MODULUS_WIDTH-1:0] external_product_out;
+wire [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] external_product_out;
 
 external_product_final extern_product_instance(.clk(clk), .rst(buffered_reset),
 .data_in(CMUX_out),
 .data_valid(CMUX_valid_out),
-.BSK(data_in_reg[`MODULUS_WIDTH*`RING_SIZE-1:0]),
+.BSK(data_in_reg[`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE-1:0]),
 .BSK_valid(BSK_valid),
 .data_out(external_product_out),
 .data_valid_out(data_external_product_valid_out)
 );
 
 
-wire [`RING_SIZE*`MODULUS_WIDTH-1:0] accumulator_buffer_out, accumulator_from_datapath_cmux_in;
+wire [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] accumulator_buffer_out, accumulator_from_datapath_cmux_in;
 
-wire [`MODULUS_WIDTH+1-1:0] sum [0:`RING_SIZE-1];
-wire [`MODULUS_WIDTH+1-1:0] sum_minus_modulus [0:`RING_SIZE-1];
-wire [`RING_SIZE*`MODULUS_WIDTH-1:0] accumulator_for_next_iteration;
-reg [`RING_SIZE*`MODULUS_WIDTH-1:0] accumulator_for_next_iteration_reg;
+wire [`MODULUS_WIDTH+1-1:0] sum [0:`COEF_PER_CLOCK_CYCLE-1];
+wire [`MODULUS_WIDTH+1-1:0] sum_minus_modulus [0:`COEF_PER_CLOCK_CYCLE-1];
+wire [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] accumulator_for_next_iteration;
+reg [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] accumulator_for_next_iteration_reg;
 generate
 genvar n;
-for (n= 0; n<`RING_SIZE; n=n+1) begin: ACCUMULATOR
+for (n= 0; n<`COEF_PER_CLOCK_CYCLE; n=n+1) begin: ACCUMULATOR
 shift_reg_width  #(.shift(`CMUX_LATENCY + `EXTERNAL_PRODUCT_LATENCY), .width(`MODULUS_WIDTH)) accumulator_buffer (
   .clk(clk),  // input wire CLK
   .data_in(CMUX_in[n*`MODULUS_WIDTH+:`MODULUS_WIDTH]),      // input wire [9 : 0] D
@@ -184,11 +184,11 @@ end
 assign CMUX_in = data_valid_out_gen_acc ? gen_acc_out : accumulator_from_datapath_cmux_in;
 
 
-wire [`HBM_WIDTH*`RING_SIZE-1:0] data_out_small;
+wire [`HBM_WIDTH*`COEF_PER_CLOCK_CYCLE-1:0] data_out_small;
 
 generate
     genvar b;
-    for (b=0; b<`RING_SIZE; b=b+1) begin: DATA_REROUTE_OUT
+    for (b=0; b<`COEF_PER_CLOCK_CYCLE; b=b+1) begin: DATA_REROUTE_OUT
         assign data_out_small[b*`HBM_WIDTH+:`MODULUS_WIDTH] = accumulator_from_datapath_cmux_in[b*`MODULUS_WIDTH+:`MODULUS_WIDTH];
         assign data_out_small[b*`HBM_WIDTH+`MODULUS_WIDTH+:(`HBM_WIDTH-`MODULUS_WIDTH)] = 0;
     end
@@ -208,7 +208,7 @@ reg data_out_valid_reg, data_out_valid_reg_2;
 
 reg [4095:0] data_out_reg, data_out_reg_2;
 always @(posedge clk) begin
-    data_out_reg <= { {4096-`RING_SIZE*`HBM_WIDTH{1'b0}} , data_out_small};
+    data_out_reg <= { {4096-`COEF_PER_CLOCK_CYCLE*`HBM_WIDTH{1'b0}} , data_out_small};
     data_out_reg_2 <= data_out_reg;
     data_out_valid_reg <=~state_waiting_till_reading_out_acc && CMUX_datapath_valid_out;
     data_out_valid_reg_2 <= data_out_valid_reg;

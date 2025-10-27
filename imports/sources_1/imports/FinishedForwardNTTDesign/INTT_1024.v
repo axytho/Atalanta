@@ -22,10 +22,10 @@
 module INTT_1024(
     input clk,
     input reset,
-    input [`RING_SIZE*`GOLD_MODULUS_WIDTH-1:0] data_in,
+    input [`COEF_PER_CLOCK_CYCLE*`GOLD_MODULUS_WIDTH-1:0] data_in,
     input data_valid,
     output data_valid_out,
-    output [`RING_SIZE*`GOLD_MODULUS_WIDTH-1:0] data_out
+    output [`COEF_PER_CLOCK_CYCLE*`GOLD_MODULUS_WIDTH-1:0] data_out
     );
     
 function [`MODULUS_WIDTH-1:0] modular_pow;
@@ -50,14 +50,14 @@ function [`MODULUS_WIDTH-1:0] modular_pow;
 endfunction
 
 
-wire [`RING_SIZE*(`GOLD_MODULUS_WIDTH)-1:0]  barrel_in_wire_2, barrel_in_wire_3;
-wire [`RING_SIZE*(`GOLD_MODULUS_WIDTH)-1:0] NTT_IN_wire_GOLD_MODULUS, NTT_IN_wire_GOLD_MODULUS_2;
-wire [`RING_SIZE*(`MODULUS_WIDTH)-1:0] NTT_IN_wire, NTT_IN_wire_2;
-wire [`RING_SIZE*(`MODULUS_WIDTH)-1:0] NTT_OUT_wire, NTT_OUT_wire_2;
-wire [(`GOLD_MODULUS_WIDTH)-1:0] internal_wiring [0:(`RING_SIZE)-1];
-wire [(`GOLD_MODULUS_WIDTH)-1:0] internal_wiring_2 [0:(`RING_SIZE)-1];
-wire [(`GOLD_MODULUS_WIDTH)-1:0] twiddle_out [0:(`RING_SIZE)-1];
-wire [(`GOLD_MODULUS_WIDTH)-1:0] mult_out [0:(`RING_SIZE)-1];
+wire [`COEF_PER_CLOCK_CYCLE*(`GOLD_MODULUS_WIDTH)-1:0]  barrel_in_wire_2, barrel_in_wire_3;
+wire [`COEF_PER_CLOCK_CYCLE*(`GOLD_MODULUS_WIDTH)-1:0] NTT_IN_wire_GOLD_MODULUS, NTT_IN_wire_GOLD_MODULUS_2;
+wire [`COEF_PER_CLOCK_CYCLE*(`MODULUS_WIDTH)-1:0] NTT_IN_wire, NTT_IN_wire_2;
+wire [`COEF_PER_CLOCK_CYCLE*(`MODULUS_WIDTH)-1:0] NTT_OUT_wire, NTT_OUT_wire_2;
+wire [(`GOLD_MODULUS_WIDTH)-1:0] internal_wiring [0:(`COEF_PER_CLOCK_CYCLE)-1];
+wire [(`GOLD_MODULUS_WIDTH)-1:0] internal_wiring_2 [0:(`COEF_PER_CLOCK_CYCLE)-1];
+wire [(`GOLD_MODULUS_WIDTH)-1:0] twiddle_out [0:(`COEF_PER_CLOCK_CYCLE)-1];
+wire [(`GOLD_MODULUS_WIDTH)-1:0] mult_out [0:(`COEF_PER_CLOCK_CYCLE)-1];
 wire  data_ntt_valid, data_multiplier_valid, data_barrel_2_valid, data_ntt_valid_2;
 wire [(1<<(2*`RING_DEPTH-`LOG_N))-1:0] data_ntt_2_valid_out;
 wire twiddle_valid;
@@ -76,7 +76,7 @@ generate
     for(ntt_iter = 0; ntt_iter < (1<<(2*`RING_DEPTH-`LOG_N)); ntt_iter=ntt_iter+1) begin: NTT_ITER_LOOP
         NTT_const_mult #(.STREAM_SIZE(`NTT_DIV_BY_RING), 
         .PSI(`INVERSE_TWIDDLE_2048), 
-        .OMEGA(modular_pow(`INVERSE_TWIDDLE_2048, `RING_SIZE<<1, `MODULUS)), 
+        .OMEGA(modular_pow(`INVERSE_TWIDDLE_2048, `COEF_PER_CLOCK_CYCLE<<1, `MODULUS)), 
         .PRECOMP_FACTOR(`PRECOMP_FACTOR),
         .DIRECTION("INVERSE")) NTT_16_inst(
         clk,
@@ -107,7 +107,7 @@ shift_reg_data_valid #(`MULTIPLIER_LATENCY+`REDUCTION_LATENCY) shift_instance_2 
 //reduction + multiplier
 generate
     genvar k;
-    for(k = 0; k < `RING_SIZE; k=k+1) begin: INITIAL
+    for(k = 0; k < `COEF_PER_CLOCK_CYCLE; k=k+1) begin: INITIAL
         // MODULUS_WIDTH - `GOLD_MODULUS_WIDTH
         modular_multiplier modular_multiplier(
         .clk(clk),.input_a(NTT_IN_wire_2[(k+1)*(`MODULUS_WIDTH)-1:k*(`MODULUS_WIDTH)]), .input_b(twiddle_out[k]), 
@@ -118,14 +118,14 @@ endgenerate
 
 generate
     genvar m;
-    for(m = 0; m < `RING_SIZE; m=m+1) begin: BARREL_2
+    for(m = 0; m < `COEF_PER_CLOCK_CYCLE; m=m+1) begin: BARREL_2
         // MODULUS_WIDTH - `GOLD_MODULUS_WIDTH
         assign barrel_in_wire_2[m*`GOLD_MODULUS_WIDTH+:`GOLD_MODULUS_WIDTH] = mult_out[m] ;
     end
 endgenerate 
 
 // NTT_64
-NTT_const_mult #(.STREAM_SIZE(`RING_SIZE), 
+NTT_const_mult #(.STREAM_SIZE(`COEF_PER_CLOCK_CYCLE), 
 .PSI(modular_pow(`INVERSE_TWIDDLE_2048, `NTT_DIV_BY_RING, `MODULUS)), 
 .OMEGA(modular_pow(`INVERSE_TWIDDLE_2048, `NTT_DIV_BY_RING<<1, `MODULUS)), 
 .PRECOMP_FACTOR(`PRECOMP_FACTOR),

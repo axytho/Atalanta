@@ -27,9 +27,9 @@ module addr_generation_unit_CMUX(
     input [`LOG_N-1+1:0] invert_coef,
     input data_valid_in,
     output data_valid_out,
-    output [`RING_SIZE-1:0] sign_data, //32 sign bits at a time
+    output [`COEF_PER_CLOCK_CYCLE-1:0] sign_data, //32 sign bits at a time
     output [`LOG_N-`RING_DEPTH+1-1:0] write_addr,
-    output [(`LOG_N-`RING_DEPTH+1)*`RING_SIZE-1:0] read_addr
+    output [(`LOG_N-`RING_DEPTH+1)*`COEF_PER_CLOCK_CYCLE-1:0] read_addr
     );
 
 wire [`LOG_N-1+1:0] invert_coef_delayed;   
@@ -108,13 +108,13 @@ always @(posedge clk) begin
     
 end
 
-wire [`LOG_N-1:0] offset [0:`RING_SIZE-1];
-wire [`LOG_N-`RING_DEPTH-1:0] lower_five_bits [0:`RING_SIZE-1];
-wire [`LOG_N+1-1:0] sign_sum [0:`RING_SIZE-1];
-wire [`RING_SIZE-1:0] signs;
+wire [`LOG_N-1:0] offset [0:`COEF_PER_CLOCK_CYCLE-1];
+wire [`LOG_N-`RING_DEPTH-1:0] lower_five_bits [0:`COEF_PER_CLOCK_CYCLE-1];
+wire [`LOG_N+1-1:0] sign_sum [0:`COEF_PER_CLOCK_CYCLE-1];
+wire [`COEF_PER_CLOCK_CYCLE-1:0] signs;
 generate
     genvar i;
-    for(i = 0; i < `RING_SIZE; i=i+1) begin: INITIAL
+    for(i = 0; i < `COEF_PER_CLOCK_CYCLE; i=i+1) begin: INITIAL
         assign offset[i] = i[`RING_DEPTH-1:0] + invert_coef_delayed;
         assign lower_five_bits[i] = offset[i][`LOG_N-1:`RING_DEPTH] + read_counter[`LOG_N-`RING_DEPTH-1:0];
         assign read_addr[(i)*(`LOG_N-`RING_DEPTH+1)+:(`LOG_N-`RING_DEPTH+1)] = {read_counter[`LOG_N-`RING_DEPTH], lower_five_bits[i]};
@@ -123,7 +123,7 @@ generate
     end
 endgenerate  
 
-reg [`RING_SIZE-1:0] signs_reg, signs_reg_reg;
+reg [`COEF_PER_CLOCK_CYCLE-1:0] signs_reg, signs_reg_reg;
 always @(posedge clk) begin
     signs_reg <= signs;
     signs_reg_reg <= signs_reg;

@@ -1,7 +1,7 @@
 `include "parameters.v" 
 `include "ntt_params.v"
 
-module barrel_shifter #(parameter STREAM_SIZE = `RING_SIZE, parameter DATA_ELEMENT_WIDTH = `MODULUS_WIDTH) (
+module barrel_shifter #(parameter STREAM_SIZE = `COEF_PER_CLOCK_CYCLE, parameter DATA_ELEMENT_WIDTH = `MODULUS_WIDTH) (
 input clk,
 input [STREAM_SIZE*DATA_ELEMENT_WIDTH-1:0] data_in,
 input [($clog2(STREAM_SIZE))-1:0] shift,

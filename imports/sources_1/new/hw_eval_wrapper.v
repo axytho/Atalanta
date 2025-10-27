@@ -23,7 +23,7 @@
 module hw_eval_wrapper(
     input clk,
     input [`MODULUS_WIDTH-1:0] random_input,
-    output [`RING_SIZE>>2-1:0] random_output,
+    output [`COEF_PER_CLOCK_CYCLE>>2-1:0] random_output,
     output data_valid_out_quick
     );
     
@@ -31,11 +31,11 @@ module hw_eval_wrapper(
 //always @(posedge clk)
 //counter <= counter+1;
 //end
-wire [`RING_SIZE*`MODULUS_WIDTH-1:0] random_output_raw;
+wire [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] random_output_raw;
 
-reg [`RING_SIZE*`MODULUS_WIDTH-1:0] randomness;
+reg [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] randomness;
 always @(posedge clk) begin
-    randomness <= {random_input, randomness[`RING_SIZE*`MODULUS_WIDTH-1:`MODULUS_WIDTH]};
+    randomness <= {random_input, randomness[`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:`MODULUS_WIDTH]};
 end
 function [`MODULUS_WIDTH-1:0] modular_pow;
  input [2*`MODULUS_WIDTH-1:0] base;
@@ -57,7 +57,7 @@ function [`MODULUS_WIDTH-1:0] modular_pow;
      end
  end
 endfunction
-NTT_const_mult #(.STREAM_SIZE(`RING_SIZE), 
+NTT_const_mult #(.STREAM_SIZE(`COEF_PER_CLOCK_CYCLE), 
 .PSI(modular_pow(`TWIDDLE_2048, 1, `MODULUS)), 
 .OMEGA(modular_pow(`TWIDDLE_2048, 2, `MODULUS)), 
 .PRECOMP_FACTOR(`PRECOMP_FACTOR)) 
@@ -66,7 +66,7 @@ NTT_128_instance(clk,randomness,randomness[0], data_valid_out_quick, random_outp
 
 generate
 genvar i;
-for (i=0;i<(`RING_SIZE>>2);i=i+1) begin
+for (i=0;i<(`COEF_PER_CLOCK_CYCLE>>2);i=i+1) begin
 assign random_output[i] = ^random_output_raw[4*`MODULUS_WIDTH*i+:4*`MODULUS_WIDTH];
 end
 endgenerate

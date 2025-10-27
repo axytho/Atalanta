@@ -26,10 +26,10 @@
 `include "ntt_params.v"
 module INTT_32_pass_2(
     input clk,
-    input [`RING_SIZE*(`MODULUS_WIDTH)-1:0] data_in,
+    input [`COEF_PER_CLOCK_CYCLE*(`MODULUS_WIDTH)-1:0] data_in,
     input data_valid,
     output data_valid_out,
-    output [`RING_SIZE*(`MODULUS_WIDTH)-1:0] data_out
+    output [`COEF_PER_CLOCK_CYCLE*(`MODULUS_WIDTH)-1:0] data_out
     );
     
 // DATA_VALID delay
@@ -38,24 +38,24 @@ shift_reg_data_valid #(`BUTTER_FLY_REGISTERS*`STAGE_SIZE) shift_instance (clk, d
 
 // NTT_64
     
-wire [`MODULUS_WIDTH-1:0] internal_wiring [0:`RING_SIZE*(`STAGE_SIZE+1)-1];
-wire [`MODULUS_WIDTH-1:0] data_out_bit_reversed [0:`RING_SIZE-1];
+wire [`MODULUS_WIDTH-1:0] internal_wiring [0:`COEF_PER_CLOCK_CYCLE*(`STAGE_SIZE+1)-1];
+wire [`MODULUS_WIDTH-1:0] data_out_bit_reversed [0:`COEF_PER_CLOCK_CYCLE-1];
 generate
     genvar i;
-    for(i = 0; i < `RING_SIZE; i=i+1) begin: INITIAL
+    for(i = 0; i < `COEF_PER_CLOCK_CYCLE; i=i+1) begin: INITIAL
         assign internal_wiring[i] = data_in[(i+1)*(`MODULUS_WIDTH)-1:i*(`MODULUS_WIDTH)];
     end
 endgenerate    
 generate
     genvar j;
-    for(j = 0; j < `RING_SIZE; j=j+1) begin: OUTPUT
+    for(j = 0; j < `COEF_PER_CLOCK_CYCLE; j=j+1) begin: OUTPUT
         assign data_out[(j+1)*(`MODULUS_WIDTH)-1:j*(`MODULUS_WIDTH)] = data_out_bit_reversed[j];
     end
 endgenerate    
 generate
     genvar k;
-    for(k = 0; k < `RING_SIZE; k=k+1) begin: BIT_REVERSE_INDEX
-        assign data_out_bit_reversed[{k[0], k[1], k[2], k[3], k[4]}] = internal_wiring[`STAGE_SIZE*`RING_SIZE + k];
+    for(k = 0; k < `COEF_PER_CLOCK_CYCLE; k=k+1) begin: BIT_REVERSE_INDEX
+        assign data_out_bit_reversed[{k[0], k[1], k[2], k[3], k[4]}] = internal_wiring[`STAGE_SIZE*`COEF_PER_CLOCK_CYCLE + k];
     end
 endgenerate    
 function [`MODULUS_WIDTH-1:0] modular_pow;
@@ -126,15 +126,15 @@ generate
     
     for(stage = 0; stage < `STAGE_SIZE; stage=stage+1) begin: STAGE_LOOP
         for (block_number = 0; block_number < (1<<stage); block_number=block_number+1) begin: BLOCK_LOOP
-                for (twiddle_exponent = 0; twiddle_exponent  < (`RING_SIZE>>(stage+1)); twiddle_exponent = twiddle_exponent + 1) begin : INSIDE_BLOCK
+                for (twiddle_exponent = 0; twiddle_exponent  < (`COEF_PER_CLOCK_CYCLE>>(stage+1)); twiddle_exponent = twiddle_exponent + 1) begin : INSIDE_BLOCK
                 // 244715 = psi^32 mod Q
                 // we need to calculate 
                     GS_butterfly #(.TWIDDLE(modular_mult(modular_mult(524289,modular_pow(70756,`MODULUS, (1<<(stage))) ,`MODULUS),modular_pow(203749,`MODULUS, twiddle_exponent<<stage),`MODULUS)))
                     butterfly0(.clk(clk),
-                    .input_a(internal_wiring[stage*`RING_SIZE+2*block_number*(`RING_SIZE>>(stage+1)) + twiddle_exponent]), 
-                    .input_b(internal_wiring[stage*`RING_SIZE+2*block_number*(`RING_SIZE>>(stage+1)) + twiddle_exponent + (`RING_SIZE>>(stage+1))]), 
-                    .output_a(internal_wiring[(stage+1)*`RING_SIZE+2*block_number*(`RING_SIZE>>(stage+1)) + twiddle_exponent]),
-                    .output_b(internal_wiring[(stage+1)*`RING_SIZE+2*block_number*(`RING_SIZE>>(stage+1)) + twiddle_exponent + (`RING_SIZE>>(stage+1))]));
+                    .input_a(internal_wiring[stage*`COEF_PER_CLOCK_CYCLE+2*block_number*(`COEF_PER_CLOCK_CYCLE>>(stage+1)) + twiddle_exponent]), 
+                    .input_b(internal_wiring[stage*`COEF_PER_CLOCK_CYCLE+2*block_number*(`COEF_PER_CLOCK_CYCLE>>(stage+1)) + twiddle_exponent + (`COEF_PER_CLOCK_CYCLE>>(stage+1))]), 
+                    .output_a(internal_wiring[(stage+1)*`COEF_PER_CLOCK_CYCLE+2*block_number*(`COEF_PER_CLOCK_CYCLE>>(stage+1)) + twiddle_exponent]),
+                    .output_b(internal_wiring[(stage+1)*`COEF_PER_CLOCK_CYCLE+2*block_number*(`COEF_PER_CLOCK_CYCLE>>(stage+1)) + twiddle_exponent + (`COEF_PER_CLOCK_CYCLE>>(stage+1))]));
             end
         end
     end
