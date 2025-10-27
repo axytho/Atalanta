@@ -38,7 +38,7 @@ wire [`LOG_N+1-1:0] b_out;
 
 wire [`LOG_N+1-1:0] b_temp; 
 
-assign b_temp = data_in + (`NTT_VECTOR_SIZE>>1);
+assign b_temp = data_in + (`NTT_POLYNOMIAL_SIZE>>1);
 
 assign b_in= b_temp;// we interpret b[`LOG_N] ==1 as being sign=-1
 

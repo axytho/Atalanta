@@ -134,7 +134,7 @@ shift_reg_width  #(.shift(`NTT_DIV_BY_RING+3), .width(1)) coef_storage_space (
   .data_out(coef_sign)      // output wire [9 : 0] Q
 );
 
-wire [`LOG_N-1+1:0] invert_coef = `NTT_VECTOR_SIZE - coef_from_barrel[`LOG_N-1:0];
+wire [`LOG_N-1+1:0] invert_coef = `NTT_POLYNOMIAL_SIZE - coef_from_barrel[`LOG_N-1:0];
 assign shift = coefficient[`RING_DEPTH-1:0];
 barrel_shifter barrel_instance(clk,data_in_reg_2, shift, data_valid_reg_2, data_memory_valid, data_memory_in);
 //barrel has a latency of 6 cycles

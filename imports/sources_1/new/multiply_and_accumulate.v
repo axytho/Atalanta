@@ -174,7 +174,7 @@ generate
     genvar i,j;
     for (i = 0; i< `L; i=i+1) begin: PER_L
         for (j = 0; j<`RING_SIZE; j=j+1) begin: PER_RING_SIZE//                                                                   alternatively: counter[(`LOG_N-`RING_DEPTH)+:clog(`iterations)]
-            //assign BSK_out[i*`MODULUS_WIDTH*`RING_SIZE+j*`MODULUS_WIDTH+:`MODULUS_WIDTH] = BSK[counter[(`LOG_N-`RING_DEPTH-1):0]*`RING_SIZE+iteration_counter*`NTT_VECTOR_SIZE*`L +i*`NTT_VECTOR_SIZE+j];
+            //assign BSK_out[i*`MODULUS_WIDTH*`RING_SIZE+j*`MODULUS_WIDTH+:`MODULUS_WIDTH] = BSK[counter[(`LOG_N-`RING_DEPTH-1):0]*`RING_SIZE+iteration_counter*`NTT_POLYNOMIAL_SIZE*`L +i*`NTT_POLYNOMIAL_SIZE+j];
             modular_multiplier modular_multiplier(
             .clk(clk),.input_a(BSK_reg_2[i*`MODULUS_WIDTH*`RING_SIZE+j*`MODULUS_WIDTH+:`MODULUS_WIDTH]), 
             //.clk(clk),.input_a(BSK_out[i*`MODULUS_WIDTH*`RING_SIZE+j*`MODULUS_WIDTH+:`MODULUS_WIDTH]), 

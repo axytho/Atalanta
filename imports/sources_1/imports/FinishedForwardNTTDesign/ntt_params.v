@@ -6,10 +6,10 @@
 
 `define LOG_N 8
 `define RING_SIZE       (1 << 8)
-`define NTT_VECTOR_SIZE (1<<`LOG_N)
+`define NTT_POLYNOMIAL_SIZE (1<<`LOG_N)
 `define RING_DEPTH       ($clog2(`RING_SIZE))
 `define STAGE_SIZE      `RING_DEPTH
-`define NTT_DIV_BY_RING (`NTT_VECTOR_SIZE>>`RING_DEPTH)
+`define NTT_DIV_BY_RING (`NTT_POLYNOMIAL_SIZE>>`RING_DEPTH)
 
 
 
