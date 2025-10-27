@@ -22,7 +22,7 @@
 
 
 
-`include "parameters.v"
+`include "parameters.v" `include "ntt_params.v"
 module pearl_of_the_butterfly
 #(parameter TWIDDLE = 0)
 (

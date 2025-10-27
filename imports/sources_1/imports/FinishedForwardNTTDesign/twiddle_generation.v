@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-`include "parameters.v"
+`include "parameters.v" `include "ntt_params.v"
 module twiddle_generation #(parameter TWIDDLE_INDEX= 0, parameter DIRECTION = "FORWARD")
 
 (

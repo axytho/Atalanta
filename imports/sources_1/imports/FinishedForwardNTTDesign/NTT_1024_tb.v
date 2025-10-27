@@ -18,7 +18,8 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-`include "parameters.v"
+`include "parameters.v" 
+`include "ntt_params.v"
 
 module NTT_1024_tb( );
 

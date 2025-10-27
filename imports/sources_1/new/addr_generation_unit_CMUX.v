@@ -19,7 +19,8 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-`include "parameters.v"
+`include "parameters.v" 
+`include "ntt_params.v"
 module addr_generation_unit_CMUX(
     input clk,
     input reset,

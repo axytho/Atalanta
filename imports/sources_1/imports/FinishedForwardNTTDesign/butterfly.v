@@ -19,7 +19,8 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-`include "parameters.v"
+`include "parameters.v" 
+`include "ntt_params.v"
 
 module butterfly
 #(parameter TWIDDLE = 0)

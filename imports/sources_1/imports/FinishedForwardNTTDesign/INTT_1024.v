@@ -17,7 +17,8 @@
 //D:\Jonas\PROGRAMS\Sigasi\sigasi.lic Pasting it here so I don't forget 
 //////////////////////////////////////////////////////////////////////////////////
 
-`include "parameters.v"
+`include "parameters.v" 
+`include "ntt_params.v"
 module INTT_1024(
     input clk,
     input reset,

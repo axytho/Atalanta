@@ -21,7 +21,8 @@
 
 
 
-`include "parameters.v"
+`include "parameters.v" 
+`include "ntt_params.v"
 module NTT_const_mult #(parameter STREAM_SIZE = 32, parameter PSI = 1, parameter OMEGA = 1, parameter PRECOMP_FACTOR = 1, parameter DIRECTION="FORWARD") (
     input clk,
     input [STREAM_SIZE*(`MODULUS_WIDTH)-1:0] data_in,

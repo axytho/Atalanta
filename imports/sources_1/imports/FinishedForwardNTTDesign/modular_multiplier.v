@@ -19,7 +19,8 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-`include "parameters.v"
+`include "parameters.v" 
+`include "ntt_params.v"
 module modular_multiplier
 (
     input clk,

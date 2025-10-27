@@ -1,4 +1,4 @@
-`include "parameters.v"
+`include "parameters.v" `include "ntt_params.v"
 //////////////////////////////////////////////////////////////////////////////////
 // Company: KU Leuven COSIC
 // Engineer: Jonas Bertels

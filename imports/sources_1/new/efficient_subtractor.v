@@ -18,7 +18,8 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-`include "parameters.v"
+`include "parameters.v" 
+`include "ntt_params.v"
 
 
 module efficient_subtractor #(parameter INPUT_WIDTH = `MODULUS_WIDTH+5, parameter OUTPUT_WIDTH = `MODULUS_WIDTH+5) (

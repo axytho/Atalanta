@@ -28,7 +28,8 @@
 
 // 
 //////////////////////////////////////////////////////////////////////////////////
-`include "parameters.v"
+`include "parameters.v" 
+`include "ntt_params.v"
 
 module butterfly_jewel_GS //Currently 49341 LUTS ad 63805 FFs with this version
 #(parameter TWIDDLE = 0, parameter DIRECTION = "FORWARD", parameter STAGE = 1, parameter STAGE_REDUCTION = 32'hdeadbeef)

@@ -18,7 +18,8 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-`include "parameters.v"
+`include "parameters.v" 
+`include "ntt_params.v"
 
 
 module efficient_adder_no_3 #(parameter INPUT_WIDTH = `MODULUS_WIDTH+2, parameter OUTPUT_WIDTH = `MODULUS_WIDTH+3) (

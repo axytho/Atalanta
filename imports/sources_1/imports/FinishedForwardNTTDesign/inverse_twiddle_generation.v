@@ -20,7 +20,8 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-`include "parameters.v"
+`include "parameters.v" 
+`include "ntt_params.v"
 module inverse_twiddle_generation #(
 parameter TWIDDLE_INDEX=0
 )

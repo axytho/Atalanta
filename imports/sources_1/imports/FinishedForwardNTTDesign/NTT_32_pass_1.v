@@ -22,7 +22,8 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-`include "parameters.v"
+`include "parameters.v" 
+`include "ntt_params.v"
 module NTT_32_pass_1(
     input clk,
     input [`RING_SIZE*(`MODULUS_WIDTH)-1:0] data_in,

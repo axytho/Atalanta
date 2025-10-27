@@ -26,7 +26,8 @@
 
 // 
 //////////////////////////////////////////////////////////////////////////////////
-`include "parameters.v"
+`include "parameters.v" 
+`include "ntt_params.v"
 
 module butterfly_14bis
 #(parameter TWIDDLE = 0, parameter DIRECTION = "FORWARD")

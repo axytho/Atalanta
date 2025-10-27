@@ -23,7 +23,8 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-`include "parameters.v"
+`include "parameters.v" 
+`include "ntt_params.v"
 module FINAL(
     input clk,
     input rst,

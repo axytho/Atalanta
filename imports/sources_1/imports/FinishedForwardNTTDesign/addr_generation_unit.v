@@ -19,7 +19,8 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-`include "parameters.v"
+`include "parameters.v" 
+`include "ntt_params.v"
 module addr_generation_unit #(parameter STREAM_SIZE = `RING_SIZE) (
     input clk,
     input reset,

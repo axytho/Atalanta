@@ -1,4 +1,5 @@
-`include "parameters.v"
+`include "parameters.v" 
+`include "ntt_params.v"
 
 module barrel_shifter #(parameter STREAM_SIZE = `RING_SIZE, parameter DATA_ELEMENT_WIDTH = `MODULUS_WIDTH) (
 input clk,

@@ -19,7 +19,8 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-`include "parameters.v"
+`include "parameters.v" 
+`include "ntt_params.v"
 
 module matrix_rectangular_transpose #(parameter direction = "FORWARD") (
 input clk,

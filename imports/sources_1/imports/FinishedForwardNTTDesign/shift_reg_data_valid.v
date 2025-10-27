@@ -19,7 +19,7 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-`include "parameters.v"
+`include "parameters.v" `include "ntt_params.v"
 module shift_reg_data_valid #(parameter shift = 1) (
     input clk,
     input data_valid,
