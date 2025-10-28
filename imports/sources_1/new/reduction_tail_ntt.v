@@ -126,19 +126,19 @@ endgenerate
 
 
 
-wire [`GOLD_MODULUS_WIDTH-1:0] three_times_b,  b_plus_c_without_negative_carry;
-reg  [`GOLD_MODULUS_WIDTH-1:0] three_times_b_reg,  b_plus_c_without_negative_carry_reg;
-wire [`GOLD_MODULUS_WIDTH+1-1:0] reduction_to_21_bit;
-wire  [`GOLD_MODULUS_WIDTH+1-1:0] reduction_one_addition_above_modulus;
-reg  [`GOLD_MODULUS_WIDTH+1-1:0] reduction_to_21_bit_reg; 
-reg  [`GOLD_MODULUS_WIDTH+1-1:0] reduction_one_addition_above_modulus_reg;
-wire [`GOLD_MODULUS_WIDTH-1:0] result_high;
-reg [`GOLD_MODULUS_WIDTH-1:0]  result_high_reg;
-wire [`GOLD_MODULUS_WIDTH+2-1:0] a;
-wire [`GOLD_MODULUS_WIDTH-2-1:0] b;
+wire [`MODULUS_WIDTH-1:0] three_times_b,  b_plus_c_without_negative_carry;
+reg  [`MODULUS_WIDTH-1:0] three_times_b_reg,  b_plus_c_without_negative_carry_reg;
+wire [`MODULUS_WIDTH+1-1:0] reduction_to_21_bit;
+wire  [`MODULUS_WIDTH+1-1:0] reduction_one_addition_above_modulus;
+reg  [`MODULUS_WIDTH+1-1:0] reduction_to_21_bit_reg; 
+reg  [`MODULUS_WIDTH+1-1:0] reduction_one_addition_above_modulus_reg;
+wire [`MODULUS_WIDTH-1:0] result_high;
+reg [`MODULUS_WIDTH-1:0]  result_high_reg;
+wire [`MODULUS_WIDTH+2-1:0] a;
+wire [`MODULUS_WIDTH-2-1:0] b;
 wire [`MODULUS_WIDTH+1-1:0] add_mod_option0;
 wire [`MODULUS_WIDTH+1-1:0] add_mod_option1;
-reg [`GOLD_MODULUS_WIDTH+2-1:0] a_reg;
+reg [`MODULUS_WIDTH+2-1:0] a_reg;
 
 
 

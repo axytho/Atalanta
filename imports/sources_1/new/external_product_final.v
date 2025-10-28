@@ -50,7 +50,7 @@ wire [`L*`MODULUS_WIDTH-1:0] data_from_decomp [0:`COEF_PER_CLOCK_CYCLE-1];
 generate
     genvar k, j;
     for(k = 0; k < `COEF_PER_CLOCK_CYCLE; k=k+1) begin: DECOMP
-        // MODULUS_WIDTH - `GOLD_MODULUS_WIDTH
+        // MODULUS_WIDTH - `MODULUS_WIDTH
         decompose decomposition_block(
         .clk(clk),.data_in(data_from_matrix_transpose[k*(`MODULUS_WIDTH)+:`MODULUS_WIDTH]), 
         .data_out(data_from_decomp[k]));
@@ -65,7 +65,7 @@ wire [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH*`L-1:0] data_from_ntt;
 generate
     genvar i;
     for (i = 0; i< `L; i=i+1) begin: NTT_PER_L
-        // MODULUS_WIDTH - `GOLD_MODULUS_WIDTH
+        // MODULUS_WIDTH - `MODULUS_WIDTH
         NTT_1024 NTT_1024_instance(clk,rst,data_to_ntt[i],data_decompose_valid, data_ntt_valid[i], data_from_ntt[i*(`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH)+:(`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH)]); 
     end
 endgenerate   

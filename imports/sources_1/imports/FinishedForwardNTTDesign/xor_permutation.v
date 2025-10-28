@@ -18,13 +18,13 @@
 //////////////////////////////////////////////////////////////////////////////////
 module xor_permutation(
 input clk,
-input [`HBM_ELEMENT_SIZE*`GOLD_MODULUS_WIDTH-1:0] data_in,
+input [`HBM_ELEMENT_SIZE*`MODULUS_WIDTH-1:0] data_in,
 input [`HBM_ELEMENT_DEPTH-1:0] clock_counter,
 input data_valid,
 output data_valid_out,
-output [`HBM_ELEMENT_SIZE*`GOLD_MODULUS_WIDTH-1:0] data_out
+output [`HBM_ELEMENT_SIZE*`MODULUS_WIDTH-1:0] data_out
 );
-reg [`GOLD_MODULUS_WIDTH-1:0] internal_wiring_reg [0:`HBM_ELEMENT_SIZE*(`HBM_ELEMENT_DEPTH+1)-1];
+reg [`MODULUS_WIDTH-1:0] internal_wiring_reg [0:`HBM_ELEMENT_SIZE*(`HBM_ELEMENT_DEPTH+1)-1];
 reg [`HBM_ELEMENT_DEPTH-1:0] shift_shift_reg [0:(`HBM_ELEMENT_DEPTH+1)-1];
   
 
@@ -33,7 +33,7 @@ shift_reg_data_valid #(`HBM_ELEMENT_DEPTH+1) shift_instance (clk, data_valid, da
 generate
     genvar j;
     for(j = 0; j < `HBM_ELEMENT_SIZE; j=j+1) begin: OUTPUT
-        assign data_out[(j+1)*`GOLD_MODULUS_WIDTH-1:j*`GOLD_MODULUS_WIDTH] = internal_wiring_reg[`HBM_ELEMENT_DEPTH*`HBM_ELEMENT_SIZE + j];
+        assign data_out[(j+1)*`MODULUS_WIDTH-1:j*`MODULUS_WIDTH] = internal_wiring_reg[`HBM_ELEMENT_DEPTH*`HBM_ELEMENT_SIZE + j];
     end
 endgenerate  
 
@@ -45,7 +45,7 @@ always @(posedge clk) begin: BARREL_SHIFTER
     integer i;
 
     for(i = 0; i < `HBM_ELEMENT_SIZE; i=i+1) begin: INITIAL
-        internal_wiring_reg[i] <= data_in[i*`GOLD_MODULUS_WIDTH+:`GOLD_MODULUS_WIDTH];
+        internal_wiring_reg[i] <= data_in[i*`MODULUS_WIDTH+:`MODULUS_WIDTH];
     end
     
     shift_shift_reg[0] <= clock_counter;

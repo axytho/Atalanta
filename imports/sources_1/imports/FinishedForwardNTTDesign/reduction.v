@@ -23,8 +23,8 @@
 module reduction
 (
     input clk,
-    input [(`GOLD_MODULUS_WIDTH<<1)-1:0] data_in,
-    output [`GOLD_MODULUS_WIDTH-1:0] data_out
+    input [(`MODULUS_WIDTH<<1)-1:0] data_in,
+    output [`MODULUS_WIDTH-1:0] data_out
     );
     
 

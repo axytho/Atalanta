@@ -24,12 +24,12 @@
 module modular_multiplier
 (
     input clk,
-    input [`GOLD_MODULUS_WIDTH-1:0] input_a,
-    input [`GOLD_MODULUS_WIDTH-1:0] input_b,
-    output [`GOLD_MODULUS_WIDTH-1:0] output_product
+    input [`MODULUS_WIDTH-1:0] input_a,
+    input [`MODULUS_WIDTH-1:0] input_b,
+    output [`MODULUS_WIDTH-1:0] output_product
     );
     
-wire [(`GOLD_MODULUS_WIDTH<<1)-1:0] output_mult;
+wire [(`MODULUS_WIDTH<<1)-1:0] output_mult;
 
 
 DSP_optimized_FINAL twiddle_multiplier(.CLK(clk), .A(input_a), .B(input_b), .P(output_mult));

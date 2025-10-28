@@ -24,15 +24,15 @@
 module NTT_1024_tb( );
 
 reg  clk, reset;
-reg  [(`GOLD_MODULUS_WIDTH+1)-1:0] input_a, input_b;
+reg  [(`MODULUS_WIDTH+1)-1:0] input_a, input_b;
 reg data_valid;
 wire data_valid_out, data_ntt_valid_2, data_ntt_valid_3;
-reg [`COEF_PER_CLOCK_CYCLE*(`GOLD_MODULUS_WIDTH)-1:0] NTT_IN_wire;
-wire [`COEF_PER_CLOCK_CYCLE*(`GOLD_MODULUS_WIDTH)-1:0] NTT_OUT_wire,  NTT_IN_wire_2, NTT_IN_wire_3; //so we can test all outputs
-reg [(`GOLD_MODULUS_WIDTH+1)-1:0] output_reg_a [0:`COEF_PER_CLOCK_CYCLE-1]; 
-reg [(`GOLD_MODULUS_WIDTH+1)-1:0] NTT_OUT_reg [0:`COEF_PER_CLOCK_CYCLE-1]; 
-reg [(`GOLD_MODULUS_WIDTH+1)-1:0] NTT_IN[0:`COEF_PER_CLOCK_CYCLE* `NTT_DIV_BY_RING-1];
-reg [(`GOLD_MODULUS_WIDTH+1)-1:0] NTT_OUT [0:`COEF_PER_CLOCK_CYCLE*`NTT_DIV_BY_RING-1];
+reg [`COEF_PER_CLOCK_CYCLE*(`MODULUS_WIDTH)-1:0] NTT_IN_wire;
+wire [`COEF_PER_CLOCK_CYCLE*(`MODULUS_WIDTH)-1:0] NTT_OUT_wire,  NTT_IN_wire_2, NTT_IN_wire_3; //so we can test all outputs
+reg [(`MODULUS_WIDTH+1)-1:0] output_reg_a [0:`COEF_PER_CLOCK_CYCLE-1]; 
+reg [(`MODULUS_WIDTH+1)-1:0] NTT_OUT_reg [0:`COEF_PER_CLOCK_CYCLE-1]; 
+reg [(`MODULUS_WIDTH+1)-1:0] NTT_IN[0:`COEF_PER_CLOCK_CYCLE* `NTT_DIV_BY_RING-1];
+reg [(`MODULUS_WIDTH+1)-1:0] NTT_OUT [0:`COEF_PER_CLOCK_CYCLE*`NTT_DIV_BY_RING-1];
 always #5 clk=~clk;
 
 
@@ -62,8 +62,8 @@ function [`MODULUS_WIDTH-1:0] modular_pow;
 endfunction
 // NTT_128
 NTT_const_mult #(.STREAM_SIZE(`COEF_PER_CLOCK_CYCLE), 
-.PSI(modular_pow(`TWIDDLE_2048, 1, `MODULUS)), 
-.OMEGA(modular_pow(`TWIDDLE_2048, 2, `MODULUS)), 
+.PSI(modular_pow(`TWIDDLE_2N, 1, `MODULUS)), 
+.OMEGA(modular_pow(`TWIDDLE_2N, 2, `MODULUS)), 
 .PRECOMP_FACTOR(`PRECOMP_FACTOR)) 
 NTT_128_instance(clk,NTT_IN_wire,data_valid, data_valid_out, NTT_OUT_wire);
 
@@ -95,23 +95,23 @@ initial begin: TEST_BUTTERFLY
 
     for(clock_cycle_counter = 0; clock_cycle_counter < `NTT_DIV_BY_RING; clock_cycle_counter=clock_cycle_counter+1) begin: CLOCK_CYLE
         for(j = 0; j < `COEF_PER_CLOCK_CYCLE; j=j+1) begin: OUTPUT
-            NTT_IN_wire[j*(`GOLD_MODULUS_WIDTH)+:(`GOLD_MODULUS_WIDTH)] = NTT_IN[`COEF_PER_CLOCK_CYCLE*clock_cycle_counter+j];
+            NTT_IN_wire[j*(`MODULUS_WIDTH)+:(`MODULUS_WIDTH)] = NTT_IN[`COEF_PER_CLOCK_CYCLE*clock_cycle_counter+j];
         end
         #10;
     end
     for(clock_cycle_counter_2 = 0; clock_cycle_counter_2 < `NTT_DIV_BY_RING; clock_cycle_counter_2=clock_cycle_counter_2+1) begin: CLOCK_CYLE_EXTRA
         /*for(j = 0; j < `COEF_PER_CLOCK_CYCLE; j=j+1) begin: OUTPUT
-            NTT_IN_wire[j*(`GOLD_MODULUS_WIDTH)+:(`GOLD_MODULUS_WIDTH)] = NTT_IN[`COEF_PER_CLOCK_CYCLE*clock_cycle_counter_2+j];
+            NTT_IN_wire[j*(`MODULUS_WIDTH)+:(`MODULUS_WIDTH)] = NTT_IN[`COEF_PER_CLOCK_CYCLE*clock_cycle_counter_2+j];
         end*/
         for(j = 0; j < `COEF_PER_CLOCK_CYCLE; j=j+1) begin: OUTPUT
-            NTT_IN_wire[j*(`GOLD_MODULUS_WIDTH)+:(`GOLD_MODULUS_WIDTH)] = 64'b0;
+            NTT_IN_wire[j*(`MODULUS_WIDTH)+:(`MODULUS_WIDTH)] = 64'b0;
         end
         #10;
     end
     data_valid = 1;
     for(clock_cycle_counter_5 = 0; clock_cycle_counter_5 < `NTT_DIV_BY_RING; clock_cycle_counter_5=clock_cycle_counter_5+1) begin: CLOCK_CYLE_EXTRA_5
         for(j = 0; j < `COEF_PER_CLOCK_CYCLE; j=j+1) begin: OUTPUT
-            NTT_IN_wire[j*(`GOLD_MODULUS_WIDTH)+:(`GOLD_MODULUS_WIDTH)] = NTT_IN[`COEF_PER_CLOCK_CYCLE*clock_cycle_counter_5+j];
+            NTT_IN_wire[j*(`MODULUS_WIDTH)+:(`MODULUS_WIDTH)] = NTT_IN[`COEF_PER_CLOCK_CYCLE*clock_cycle_counter_5+j];
         end
         #10;
     end
@@ -132,14 +132,14 @@ initial begin: TEST_BUTTERFLY
 
     for(clock_cycle_counter_4 = 0; clock_cycle_counter_4 < `NTT_DIV_BY_RING; clock_cycle_counter_4=clock_cycle_counter_4+1) begin: CLOCK_CYLE_2
         for(k=0; k<(`COEF_PER_CLOCK_CYCLE); k=k+1) begin
-            if(NTT_OUT_wire[k*(`GOLD_MODULUS_WIDTH)+:(`GOLD_MODULUS_WIDTH)] == NTT_OUT[`COEF_PER_CLOCK_CYCLE*clock_cycle_counter_4+k]) begin
+            if(NTT_OUT_wire[k*(`MODULUS_WIDTH)+:(`MODULUS_WIDTH)] == NTT_OUT[`COEF_PER_CLOCK_CYCLE*clock_cycle_counter_4+k]) begin
             // +: is the same as (k+1)*`MODULUS_WIDTH-1:k*`MODULUS_WIDTH, with the added advantage
             // that it actually works, because for some reason it's fine to have non-contant values
             // for this expression and not for k+1)*`MODULUS_WIDTH-1:k*`MODULUS_WIDTH
                 iterator_a = iterator_a+1;
             end
             else begin
-                $display("a: Index-%d -- Calculated:%d, Expected:%d",k,NTT_OUT_wire[k*(`GOLD_MODULUS_WIDTH)+:(`GOLD_MODULUS_WIDTH)],NTT_OUT[`COEF_PER_CLOCK_CYCLE*clock_cycle_counter_4+k]);
+                $display("a: Index-%d -- Calculated:%d, Expected:%d",k,NTT_OUT_wire[k*(`MODULUS_WIDTH)+:(`MODULUS_WIDTH)],NTT_OUT[`COEF_PER_CLOCK_CYCLE*clock_cycle_counter_4+k]);
             end
     
         end

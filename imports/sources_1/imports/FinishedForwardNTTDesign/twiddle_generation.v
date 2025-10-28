@@ -89,9 +89,9 @@ for (i=0; i<`NTT_DIV_BY_RING; i=i+1) begin
     assign OMEGA[i] = modular_mult(
         modular_mult(
             modular_pow(`PRECOMP_FACTOR_NORMAL_MULT,3,`MODULUS) , 
-             modular_pow(`TWIDDLE_2048,  i, `MODULUS),
+             modular_pow(`TWIDDLE_2N,  i, `MODULUS),
              `MODULUS),
-        modular_pow(`TWIDDLE_2048, 2*TWIDDLE_INDEX *i, `MODULUS), 
+        modular_pow(`TWIDDLE_2N, 2*TWIDDLE_INDEX *i, `MODULUS), 
         `MODULUS);
     end else begin
     assign OMEGA[i] = modular_mult(
@@ -99,7 +99,7 @@ for (i=0; i<`NTT_DIV_BY_RING; i=i+1) begin
                  1,
                 modular_mult(modular_pow(`PRECOMP_FACTOR_NORMAL_MULT,3,`MODULUS), `INVERSE_N,`MODULUS), 
                 `MODULUS), 
-        modular_pow(`INVERSE_TWIDDLE_2048, 2*TWIDDLE_INDEX *i, `MODULUS), 
+        modular_pow(`INVERSE_TWIDDLE_2N, 2*TWIDDLE_INDEX *i, `MODULUS), 
         `MODULUS);
     end
 end

@@ -155,19 +155,19 @@ addr_generation_unit_CMUX control(.clk(clk), .reset(reset),
 
 
 // BRAM
-wire [`GOLD_MODULUS_WIDTH-1:0] data_out_bram [0:(`COEF_PER_CLOCK_CYCLE)-1];
+wire [`MODULUS_WIDTH-1:0] data_out_bram [0:(`COEF_PER_CLOCK_CYCLE)-1];
 generate
     genvar i;
     for(i = 0; i < `COEF_PER_CLOCK_CYCLE; i=i+1) begin: BUTTERFLIES
 BRAM_custom #(
-            .RAM_WIDTH(`GOLD_MODULUS_WIDTH),
+            .RAM_WIDTH(`MODULUS_WIDTH),
             .RAM_DEPTH(2*(`NTT_DIV_BY_RING)),
             .RAM_PERFORMANCE("RAM_PERFORMANCE")
         ) BRAM_instance (
             .clka(clk),
             .addra(write_addr),
             .addrb(read_addr[i*(`LOG_N-`RING_DEPTH+1)+:(`LOG_N-`RING_DEPTH+1)]),
-            .dina(data_memory_in[(i+1)*`GOLD_MODULUS_WIDTH-1:i*`GOLD_MODULUS_WIDTH]),
+            .dina(data_memory_in[(i+1)*`MODULUS_WIDTH-1:i*`MODULUS_WIDTH]),
             .wea(data_memory_valid),// The idea being
              //that each bram is loaded one at a time
             .doutb(data_out_bram[i])

@@ -29,12 +29,12 @@ parameter TWIDDLE_INDEX=0
     input clk,
     input rst,
     input data_valid,
-    output [`GOLD_MODULUS_WIDTH-1:0] twiddle
+    output [`MODULUS_WIDTH-1:0] twiddle
     );
     
 reg [`RING_DEPTH-1:0] counter;
-reg [`GOLD_MODULUS_WIDTH-1:0] twiddle_output;
-wire [`GOLD_MODULUS_WIDTH-1:0] OMEGA [`COEF_PER_CLOCK_CYCLE-1:0];
+reg [`MODULUS_WIDTH-1:0] twiddle_output;
+wire [`MODULUS_WIDTH-1:0] OMEGA [`COEF_PER_CLOCK_CYCLE-1:0];
 
 assign twiddle = twiddle_output;
 

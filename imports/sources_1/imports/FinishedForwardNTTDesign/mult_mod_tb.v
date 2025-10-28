@@ -24,8 +24,8 @@
 module mult_mod_tb( );
 
 reg clk, reset;
-reg [`GOLD_MODULUS_WIDTH*2-1:0] input_a;
-wire [`GOLD_MODULUS_WIDTH-1:0]  output_a;
+reg [`MODULUS_WIDTH*2-1:0] input_a;
+wire [`MODULUS_WIDTH-1:0]  output_a;
 
 always #5 clk=~clk;
 // THIS TESTBENCH DOES NOT WORK: USE BUTTERFLY TEST INSTEAD AND EAT YOUR VEGGIES.

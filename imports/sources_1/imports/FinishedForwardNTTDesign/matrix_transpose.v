@@ -21,7 +21,7 @@
 
 `include "parameters.v" 
 `include "ntt_params.v"
-module matrix_transpose #(parameter STREAM_WIDTH = 32, parameter DATA_ELEMENT_WIDTH = `GOLD_MODULUS_WIDTH) (
+module matrix_transpose #(parameter STREAM_WIDTH = 32, parameter DATA_ELEMENT_WIDTH = `MODULUS_WIDTH) (
 input clk,
 input reset,
 input [STREAM_WIDTH*DATA_ELEMENT_WIDTH-1:0] data_in,

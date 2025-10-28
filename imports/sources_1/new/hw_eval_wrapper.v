@@ -58,8 +58,8 @@ function [`MODULUS_WIDTH-1:0] modular_pow;
  end
 endfunction
 NTT_const_mult #(.STREAM_SIZE(`COEF_PER_CLOCK_CYCLE), 
-.PSI(modular_pow(`TWIDDLE_2048, 1, `MODULUS)), 
-.OMEGA(modular_pow(`TWIDDLE_2048, 2, `MODULUS)), 
+.PSI(modular_pow(`TWIDDLE_2N, 1, `MODULUS)), 
+.OMEGA(modular_pow(`TWIDDLE_2N, 2, `MODULUS)), 
 .PRECOMP_FACTOR(`PRECOMP_FACTOR)) 
 NTT_128_instance(clk,randomness,randomness[0], data_valid_out_quick, random_output_raw);
 
