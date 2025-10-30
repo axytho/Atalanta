@@ -31,9 +31,9 @@ module NTT_const_mult #(parameter STREAM_SIZE = 32, parameter PSI = 1, parameter
     output [STREAM_SIZE*(`MODULUS_WIDTH)-1:0] data_out
     );
 localparam STREAM_DEPTH = ($clog2(STREAM_SIZE));
-localparam STREAM_DEPTH_MODDED = STREAM_DEPTH-1;
+localparam STREAM_DEPTH_MODDED = STREAM_DEPTH-`REDUCED_POLYNOMIAL_DEPTH;
 
-localparam REDUCTION_ADDED_WIDTH = 3;
+localparam REDUCTION_ADDED_WIDTH = ($clog2(STREAM_DEPTH_MODDED));
 //localparam REDUCTION_ADDED_WIDTH_GS_MAX = ($clog2(`MODULUS*5)+STREAM_DEPTH)- `MODULUS_WIDTH;
 localparam STAGE_REDUCTION = `STAGE_REDUCTION;
 

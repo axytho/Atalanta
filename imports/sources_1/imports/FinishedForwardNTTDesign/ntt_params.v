@@ -9,8 +9,15 @@
 // although the user may have some lattitude in picking the modulus
 // (contact your local cryptographer for more details)
 `define LOG_N 8
+
 `define MODULUS       12'b110100000001
+`define REDUCED_POLYNOMIAL_DEPTH 1 // = min(0, LOG_N - log2(gcd(2^LOG_N,MODULUS-1))+1) 
+// i.e. the highest power of two that divided modulus -1, figure out what this power is and 
+// if this power is LOG_N + 1 or higher, the exponent of the polynomials is 0 and we have 
+// fully reduced the polynomials, if power is  LOG_N or smaller, the depth
+// is equal to LOG_N + 1 - power
 `define TWIDDLE_2N 17
+
 
 //NTT hardware-specific user-defined parameters
 `define COEF_PER_CLOCK_CYCLE       (1 << 8)
