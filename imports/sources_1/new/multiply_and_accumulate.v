@@ -35,8 +35,8 @@ module multiply_and_accumulate(
 //TEMPORARY MEASURE: we use a file to load in the bootstrapping key
 //FINAL_MEASURE: we load in the BSK via HBM or DDR
 
-//reg [`ITERATION_DEPTH+`L_WIDTH+`LOG_N-`RING_DEPTH-1+1:0] counter_bsk;
-reg [`LOG_N-`RING_DEPTH-1:0] counter_bsk,counter_bsk_reg, counter_bsk_reg_2 ;
+//reg [`ITERATION_DEPTH+`L_WIDTH+`LOG_N-`LOG_COEF_PER_CC-1+1:0] counter_bsk;
+reg [`LOG_N-`LOG_COEF_PER_CC-1:0] counter_bsk,counter_bsk_reg, counter_bsk_reg_2 ;
 reg [`ITERATION_DEPTH-1+1:0] counter_iterations, counter_iterations_reg, counter_iterations_reg_2;
 reg [`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE-1:0] BSK_in_reg, BSK_in_reg_2, BSK_in_reg_3;
 reg BSK_valid_reg;
@@ -70,14 +70,14 @@ end
 always @(posedge clk) begin
     if (rst) begin
         counter_iterations <= 0;
-    end else if (&counter_bsk[`LOG_N - `RING_DEPTH - 1:0] && BSK_valid_reg && L_shift_reg[`L-1]) begin
+    end else if (&counter_bsk[`LOG_N - `LOG_COEF_PER_CC - 1:0] && BSK_valid_reg && L_shift_reg[`L-1]) begin
         counter_iterations <= counter_iterations+1;
     end else begin
         counter_iterations <= counter_iterations;
     end
 end
 
-reg [`ITERATION_DEPTH+`BATCH_DEPTH+`LOG_N-`RING_DEPTH-1:0] counter, counter_reg, counter_reg_2; 
+reg [`ITERATION_DEPTH+`BATCH_DEPTH+`LOG_N-`LOG_COEF_PER_CC-1:0] counter, counter_reg, counter_reg_2; 
 always @(posedge clk) begin
     if (rst)
         counter <= 0;
@@ -101,7 +101,7 @@ reg [`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE*`L-1:0] data_in_reg_8, data_in_reg_9, 
 always @(posedge clk) begin
     if (rst) begin
         L_shift_reg <= 1;
-    end else if (&counter_bsk[`LOG_N - `RING_DEPTH - 1:0] && BSK_valid_reg) begin
+    end else if (&counter_bsk[`LOG_N - `LOG_COEF_PER_CC - 1:0] && BSK_valid_reg) begin
         L_shift_reg <= {L_shift_reg[`L-2:0], L_shift_reg[`L-1]};
     end else begin
         L_shift_reg <= L_shift_reg;
@@ -109,19 +109,19 @@ always @(posedge clk) begin
 end
 
 /// `L=7 differnt BRAMS which contain the secret key values
-//wire [`L*`RING_DEPTH*`MODULUS_WIDTH] BSK_out;
+//wire [`L*`LOG_COEF_PER_CC*`MODULUS_WIDTH] BSK_out;
 generate
     genvar l;
     for(l = 0; l < `L; l=l+1) begin: URAM_BSK
 URAM_custom #(
             .DWIDTH(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE),
-            .AWIDTH(`LOG_N-`RING_DEPTH+`ITERATION_DEPTH),
+            .AWIDTH(`LOG_N-`LOG_COEF_PER_CC+`ITERATION_DEPTH),
             .NBPIPE(8)
         ) URAM_instance (
             .clk(clk),
             .mem_en(1'b1),
-            .addra({counter_iterations_reg_2[`ITERATION_DEPTH-1:0], counter_bsk_reg_2[`LOG_N-`RING_DEPTH-1:0]}),
-            .addrb({counter_reg_2[`ITERATION_DEPTH+`BATCH_DEPTH+`LOG_N-`RING_DEPTH-1:`BATCH_DEPTH+`LOG_N-`RING_DEPTH],counter_reg_2[`LOG_N-`RING_DEPTH-1:0]}),
+            .addra({counter_iterations_reg_2[`ITERATION_DEPTH-1:0], counter_bsk_reg_2[`LOG_N-`LOG_COEF_PER_CC-1:0]}),
+            .addrb({counter_reg_2[`ITERATION_DEPTH+`BATCH_DEPTH+`LOG_N-`LOG_COEF_PER_CC-1:`BATCH_DEPTH+`LOG_N-`LOG_COEF_PER_CC],counter_reg_2[`LOG_N-`LOG_COEF_PER_CC-1:0]}),
             .dina(BSK_in_reg_3),
             .wea(BSK_URAM_wea_reg_2[l]),// load each BRAM for every 1024 coefficients
             .doutb(BSK_out[l*`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE+:`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE])
@@ -164,7 +164,7 @@ generate
       if (`ITERATIONS==1) begin: NO_ITERATION_COUNTER
          assign iteration_counter = 0;
       end else begin: WITH_ITERATION_COUNTER
-         assign iteration_counter = counter[`COUNTER_SIZE-1:(`LOG_N-`RING_DEPTH+`BATCH_DEPTH)];
+         assign iteration_counter = counter[`COUNTER_SIZE-1:(`LOG_N-`LOG_COEF_PER_CC+`BATCH_DEPTH)];
       end
    endgenerate
 
@@ -173,8 +173,8 @@ generate
 generate
     genvar i,j;
     for (i = 0; i< `L; i=i+1) begin: PER_L
-        for (j = 0; j<`COEF_PER_CLOCK_CYCLE; j=j+1) begin: PER_COEF_PER_CLOCK_CYCLE//                                                                   alternatively: counter[(`LOG_N-`RING_DEPTH)+:clog(`iterations)]
-            //assign BSK_out[i*`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE+j*`MODULUS_WIDTH+:`MODULUS_WIDTH] = BSK[counter[(`LOG_N-`RING_DEPTH-1):0]*`COEF_PER_CLOCK_CYCLE+iteration_counter*`NTT_POLYNOMIAL_SIZE*`L +i*`NTT_POLYNOMIAL_SIZE+j];
+        for (j = 0; j<`COEF_PER_CLOCK_CYCLE; j=j+1) begin: PER_COEF_PER_CLOCK_CYCLE//                                                                   alternatively: counter[(`LOG_N-`LOG_COEF_PER_CC)+:clog(`iterations)]
+            //assign BSK_out[i*`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE+j*`MODULUS_WIDTH+:`MODULUS_WIDTH] = BSK[counter[(`LOG_N-`LOG_COEF_PER_CC-1):0]*`COEF_PER_CLOCK_CYCLE+iteration_counter*`NTT_POLYNOMIAL_SIZE*`L +i*`NTT_POLYNOMIAL_SIZE+j];
             modular_multiplier modular_multiplier(
             .clk(clk),.input_a(BSK_reg_2[i*`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE+j*`MODULUS_WIDTH+:`MODULUS_WIDTH]), 
             //.clk(clk),.input_a(BSK_out[i*`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE+j*`MODULUS_WIDTH+:`MODULUS_WIDTH]), 

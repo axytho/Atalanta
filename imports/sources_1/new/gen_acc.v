@@ -54,7 +54,7 @@ always @(posedge clk) begin
 end
 
 reg start;
-reg [`BATCH_DEPTH+(`LOG_N-`RING_DEPTH)-1:0] counter_out;
+reg [`BATCH_DEPTH+(`LOG_N-`LOG_COEF_PER_CC)-1:0] counter_out;
 always @(posedge clk) begin
     if (rst)
         start <= 0;
@@ -83,7 +83,7 @@ always @(posedge clk) begin
 
 end
 
-assign next_acc = &counter_out[(`LOG_N-`RING_DEPTH)-1:0];//shift to the next b
+assign next_acc = &counter_out[(`LOG_N-`LOG_COEF_PER_CC)-1:0];//shift to the next b
 
 shift_reg_width_CE  #(.shift(`BATCH_SIZE), .width(`LOG_N+1)) coef_storage_space (
   .clk(clk),  // input wire CLK
@@ -97,7 +97,7 @@ generate
     genvar l;
     wire [`LOG_N+1:0] coefficient [0:`COEF_PER_CLOCK_CYCLE-1];
     for(l = 0; l < `COEF_PER_CLOCK_CYCLE; l=l+1) begin: ADD_SUBTACT //the minus one makes it so it goes up to, but not including coef
-       assign coefficient[l] =  b_out[`LOG_N-1:0] - (l+`COEF_PER_CLOCK_CYCLE*counter_out[(`LOG_N-`RING_DEPTH)-1:0]) - 1; 
+       assign coefficient[l] =  b_out[`LOG_N-1:0] - (l+`COEF_PER_CLOCK_CYCLE*counter_out[(`LOG_N-`LOG_COEF_PER_CC)-1:0]) - 1; 
        assign data_out[l*`MODULUS_WIDTH+:`MODULUS_WIDTH] = (coefficient[l][`LOG_N] ^ b_out[`LOG_N]) ? (`MODULUSEIGHTH) : (`MODULUS - `MODULUSEIGHTH);
     end
 endgenerate 

@@ -23,7 +23,7 @@
 
 `include "parameters.v" 
 `include "ntt_params.v"
-module NTT_const_mult #(parameter STREAM_SIZE = 32, parameter PSI = 1, parameter OMEGA = 1, parameter PRECOMP_FACTOR = 1, parameter DIRECTION="FORWARD") (
+module NTT_const_mult #(parameter STREAM_SIZE = 32, parameter PSI = 1, parameter OMEGA = 1, parameter PRECOMP_FACTOR = 1, parameter DIRECTION="FORWARD", parameter REDUCED_POLYNOMIAL_DEPTH=`REDUCED_POLYNOMIAL_DEPTH) (
     input clk,
     input [STREAM_SIZE*(`MODULUS_WIDTH)-1:0] data_in,
     input data_valid,
@@ -31,14 +31,12 @@ module NTT_const_mult #(parameter STREAM_SIZE = 32, parameter PSI = 1, parameter
     output [STREAM_SIZE*(`MODULUS_WIDTH)-1:0] data_out
     );
 localparam STREAM_DEPTH = ($clog2(STREAM_SIZE));
-localparam STREAM_DEPTH_MODDED = STREAM_DEPTH-`REDUCED_POLYNOMIAL_DEPTH;
+localparam STREAM_DEPTH_MODDED = STREAM_DEPTH-REDUCED_POLYNOMIAL_DEPTH;
 
 localparam REDUCTION_ADDED_WIDTH = ($clog2(STREAM_DEPTH_MODDED));
-//localparam REDUCTION_ADDED_WIDTH_GS_MAX = ($clog2(`MODULUS*5)+STREAM_DEPTH)- `MODULUS_WIDTH;
+localparam REDUCTION_ADDED_WIDTH_GS = STREAM_DEPTH_MODDED+($clog2(`MODULUS*`SECTIONS))- `MODULUS_WIDTH;
 localparam STAGE_REDUCTION = `STAGE_REDUCTION;
 
-//localparam REDUCTION_ADDED_WIDTH_GS = (STREAM_SIZE>(1<<(`LOG_N>>1))) ?  $clog2(`MODULUS*5)- `MODULUS_WIDTH : ($clog2(`MODULUS*5))- `MODULUS_WIDTH;
-localparam REDUCTION_ADDED_WIDTH_GS = ($clog2(`MODULUS*5)+(STREAM_DEPTH%STAGE_REDUCTION))- `MODULUS_WIDTH;
 
 wire [`MODULUS_WIDTH-1:0] data_out_bit_reversed [0:STREAM_SIZE-1];
 
@@ -71,8 +69,8 @@ if (DIRECTION=="FORWARD") begin
                             butterfly_jewel #(
                             .TWIDDLE(
                             modular_mult(
-                            modular_mult(PRECOMP_FACTOR, modular_pow(PSI,STREAM_SIZE>>(stage+2), `MODULUS ) ,`MODULUS),
-                            modular_pow(OMEGA, bit_inverse(block_number)>>2, `MODULUS),
+                            modular_mult(PRECOMP_FACTOR, modular_pow(PSI,(1<<STREAM_DEPTH_MODDED)>>(stage+1), `MODULUS ) ,`MODULUS),
+                            modular_pow(OMEGA, bit_inverse(block_number)>>(1+`REDUCED_POLYNOMIAL_DEPTH), `MODULUS),
                             `MODULUS)
                             ),
                             .STAGE(stage)
@@ -86,7 +84,7 @@ if (DIRECTION=="FORWARD") begin
             end
         end
 end else begin
-   /* wire [`MODULUS_WIDTH+REDUCTION_ADDED_WIDTH_GS_MAX-1:0] internal_wiring [0:STREAM_SIZE*(STREAM_DEPTH+1)-1];
+   wire [`MODULUS_WIDTH+REDUCTION_ADDED_WIDTH_GS-1:0] internal_wiring [0:STREAM_SIZE*(STREAM_DEPTH+1)-1];
 
     genvar i;
     for(i = 0; i < STREAM_SIZE; i=i+1) begin: INITIAL
@@ -124,7 +122,7 @@ end else begin
                         .output_b(internal_wiring[(stage+1)*STREAM_SIZE+2*block_number*(STREAM_SIZE>>(stage+1)) + twiddle_exponent + (STREAM_SIZE>>(stage+1))]));
                 end
             end
-        end*/
+        end
 end
 endgenerate
 

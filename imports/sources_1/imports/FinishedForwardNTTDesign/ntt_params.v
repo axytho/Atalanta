@@ -4,6 +4,13 @@
 // Author: Jonas Bertels on behalf of COSIC, KU Leuven
 // MAY NOT BE REPRODUCED
 
+//TODO
+
+//Multiplier (For the device in use, generate an ip module or write your own verilog
+// with the name of custom_multiplier. Fill in the latency in this parameter)
+`define MULTIPLIER_LATENCY 3 // for 12x12 multipliers
+//`define MULTIPLIER_LATENCY 4 // for 20x20 bit multipliers
+
 //NTT application-specific user-defined parameters
 // i.e. the cryptographical algorithm usually decides what goes here
 // although the user may have some lattitude in picking the modulus
@@ -20,7 +27,7 @@
 
 
 //NTT hardware-specific user-defined parameters
-`define COEF_PER_CLOCK_CYCLE       (1 << 8)
+`define COEF_PER_CLOCK_CYCLE       (1 << 7)
 
 // python program defined parameters (for stuff too complicated to generate through verilog functions)
 `define INVERSE_TWIDDLE_2N 1175 //INVERSE_TWIDDLE_2N = pow(TWIDDLE_2N, -1, MODULUS)
@@ -37,7 +44,7 @@
 //DESIGN DETERMINED parameters (TO BE PARAMETRIZED)
 `define JEWEL_REGISTERS 2 //PERHAPS PARAMETRIZE AS 
 `define TAIL_REDUCTION 2
-`define MULTIPLIER_LATENCY 4
+
 `define REDUCTION_LATENCY 2
 
 
@@ -49,9 +56,9 @@
 
 
 `define NTT_POLYNOMIAL_SIZE (1<<`LOG_N)
-`define RING_DEPTH       ($clog2(`COEF_PER_CLOCK_CYCLE))
-`define STAGE_SIZE      `RING_DEPTH
-`define NTT_DIV_BY_RING (`NTT_POLYNOMIAL_SIZE>>`RING_DEPTH)
+`define LOG_COEF_PER_CC       ($clog2(`COEF_PER_CLOCK_CYCLE))
+`define STAGE_SIZE      `LOG_COEF_PER_CC
+`define NTT_DIV_BY_RING (`NTT_POLYNOMIAL_SIZE>>`LOG_COEF_PER_CC)
 
 
 

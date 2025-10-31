@@ -42,7 +42,7 @@ always @(posedge clk) begin
     buffered_reset <= rst_reg;
 end
 reg [`BSK_COUNTER_SIZE-1+1:0] counter_bsk;
-reg [`BATCH_DEPTH+`LOG_N-`RING_DEPTH-1+1:0] counter_coef_and_b_in;
+reg [`BATCH_DEPTH+`LOG_N-`LOG_COEF_PER_CC-1+1:0] counter_coef_and_b_in;
 reg [`COUNTER_SIZE-1:0] counter_until_output;
 wire state_reading_bsk = ~(counter_bsk == `NTT_DIV_BY_RING*`ITERATIONS*`L);
 wire state_reading_coef = ~(counter_coef_and_b_in == `NTT_DIV_BY_RING*`BATCH_SIZE) && ~state_reading_bsk;
@@ -106,7 +106,7 @@ wire CMUX_valid, CMUX_valid_out;
 
 reg gen_acc_valid, coef_valid, BSK_valid;
 always @(posedge clk) begin
-    gen_acc_valid <= &counter_coef_and_b_in[`LOG_N-`RING_DEPTH-1:0] && data_valid_in && data_ready_in;
+    gen_acc_valid <= &counter_coef_and_b_in[`LOG_N-`LOG_COEF_PER_CC-1:0] && data_valid_in && data_ready_in;
     coef_valid <= state_reading_coef && data_valid_in && data_ready_in;
     BSK_valid <= state_reading_bsk && data_valid_in && data_ready_in;
 end

@@ -32,7 +32,7 @@ parameter TWIDDLE_INDEX=0
     output [`MODULUS_WIDTH-1:0] twiddle
     );
     
-reg [`RING_DEPTH-1:0] counter;
+reg [`LOG_COEF_PER_CC-1:0] counter;
 reg [`MODULUS_WIDTH-1:0] twiddle_output;
 wire [`MODULUS_WIDTH-1:0] OMEGA [`COEF_PER_CLOCK_CYCLE-1:0];
 

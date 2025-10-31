@@ -28,8 +28,8 @@ module addr_generation_unit_CMUX(
     input data_valid_in,
     output data_valid_out,
     output [`COEF_PER_CLOCK_CYCLE-1:0] sign_data, //32 sign bits at a time
-    output [`LOG_N-`RING_DEPTH+1-1:0] write_addr,
-    output [(`LOG_N-`RING_DEPTH+1)*`COEF_PER_CLOCK_CYCLE-1:0] read_addr
+    output [`LOG_N-`LOG_COEF_PER_CC+1-1:0] write_addr,
+    output [(`LOG_N-`LOG_COEF_PER_CC+1)*`COEF_PER_CLOCK_CYCLE-1:0] read_addr
     );
 
 wire [`LOG_N-1+1:0] invert_coef_delayed;   
@@ -41,12 +41,12 @@ shift_reg_width  #(.shift(`NTT_DIV_BY_RING+1), .width(`LOG_N+1)) invert_coef_sto
 );
 
 
-reg  [`LOG_N-`RING_DEPTH+1-1:0] write_counter; 
+reg  [`LOG_N-`LOG_COEF_PER_CC+1-1:0] write_counter; 
 
 
 
 
-assign write_addr = write_counter[`LOG_N-`RING_DEPTH:0];
+assign write_addr = write_counter[`LOG_N-`LOG_COEF_PER_CC:0];
  //WRITE_STATE
 always @(posedge clk) begin
     if (reset) begin
@@ -60,7 +60,7 @@ always @(posedge clk) begin
 end
 
 
-reg   [`LOG_N-`RING_DEPTH+1-1:0] read_counter; // @127, it flips round back to 0
+reg   [`LOG_N-`LOG_COEF_PER_CC+1-1:0] read_counter; // @127, it flips round back to 0
 reg read_burst_trigger = 0;
 reg read_burst_trigger_reg = 0;
 reg read_burst_trigger_reg_reg = 0;
@@ -79,7 +79,7 @@ always @(posedge clk) begin
         active <= 1'b0;
     end else if (data_valid_in) begin
         active <= 1'b1;
-    end else if (~|write_counter[`LOG_N-`RING_DEPTH-1:0]) begin // IF NOT DATA_VALID_IN, and we've started reading, set to 0, once we start writing, it becomes active again
+    end else if (~|write_counter[`LOG_N-`LOG_COEF_PER_CC-1:0]) begin // IF NOT DATA_VALID_IN, and we've started reading, set to 0, once we start writing, it becomes active again
         active <= 1'b0;
     end else begin
        active <= active; 
@@ -89,9 +89,9 @@ end
 always @(posedge clk) begin
     if (reset) begin 
         read_burst_trigger <= 1'b0;
-    end else if (active && ~|write_counter[`LOG_N-`RING_DEPTH-1:0])
+    end else if (active && ~|write_counter[`LOG_N-`LOG_COEF_PER_CC-1:0])
         read_burst_trigger <= 1'b1;
-    else if(read_counter[`LOG_N-`RING_DEPTH-1:0] == `NTT_DIV_BY_RING-1)
+    else if(read_counter[`LOG_N-`LOG_COEF_PER_CC-1:0] == `NTT_DIV_BY_RING-1)
         read_burst_trigger <= 1'b0;
     else
         read_burst_trigger <= read_burst_trigger;
@@ -109,16 +109,16 @@ always @(posedge clk) begin
 end
 
 wire [`LOG_N-1:0] offset [0:`COEF_PER_CLOCK_CYCLE-1];
-wire [`LOG_N-`RING_DEPTH-1:0] lower_five_bits [0:`COEF_PER_CLOCK_CYCLE-1];
+wire [`LOG_N-`LOG_COEF_PER_CC-1:0] lower_five_bits [0:`COEF_PER_CLOCK_CYCLE-1];
 wire [`LOG_N+1-1:0] sign_sum [0:`COEF_PER_CLOCK_CYCLE-1];
 wire [`COEF_PER_CLOCK_CYCLE-1:0] signs;
 generate
     genvar i;
     for(i = 0; i < `COEF_PER_CLOCK_CYCLE; i=i+1) begin: INITIAL
-        assign offset[i] = i[`RING_DEPTH-1:0] + invert_coef_delayed;
-        assign lower_five_bits[i] = offset[i][`LOG_N-1:`RING_DEPTH] + read_counter[`LOG_N-`RING_DEPTH-1:0];
-        assign read_addr[(i)*(`LOG_N-`RING_DEPTH+1)+:(`LOG_N-`RING_DEPTH+1)] = {read_counter[`LOG_N-`RING_DEPTH], lower_five_bits[i]};
-        assign sign_sum[i] = i + (read_counter[`LOG_N-`RING_DEPTH-1:0] << `RING_DEPTH) + invert_coef_delayed;
+        assign offset[i] = i[`LOG_COEF_PER_CC-1:0] + invert_coef_delayed;
+        assign lower_five_bits[i] = offset[i][`LOG_N-1:`LOG_COEF_PER_CC] + read_counter[`LOG_N-`LOG_COEF_PER_CC-1:0];
+        assign read_addr[(i)*(`LOG_N-`LOG_COEF_PER_CC+1)+:(`LOG_N-`LOG_COEF_PER_CC+1)] = {read_counter[`LOG_N-`LOG_COEF_PER_CC], lower_five_bits[i]};
+        assign sign_sum[i] = i + (read_counter[`LOG_N-`LOG_COEF_PER_CC-1:0] << `LOG_COEF_PER_CC) + invert_coef_delayed;
         assign signs[i] = ~sign_sum[i][`LOG_N]; //important: not gate here because we select if we are under and don't select if we're not
     end
 endgenerate  

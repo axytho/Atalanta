@@ -59,7 +59,7 @@ wire [(`MODULUS_WIDTH)-1:0] internal_wiring_2 [0:(`COEF_PER_CLOCK_CYCLE)-1];
 wire [(`MODULUS_WIDTH)-1:0] twiddle_out [0:(`COEF_PER_CLOCK_CYCLE)-1];
 wire [(`MODULUS_WIDTH)-1:0] mult_out [0:(`COEF_PER_CLOCK_CYCLE)-1];
 wire  data_ntt_valid, data_multiplier_valid, data_barrel_2_valid, data_ntt_valid_2;
-wire [(1<<(2*`RING_DEPTH-`LOG_N))-1:0] data_ntt_2_valid_out;
+wire [(1<<(2*`LOG_COEF_PER_CC-`LOG_N))-1:0] data_ntt_2_valid_out;
 wire twiddle_valid;
 
 //PSI^32 and OMEGA^32
@@ -73,7 +73,7 @@ wire twiddle_valid;
 // NTT_16
 generate
     genvar ntt_iter;
-    for(ntt_iter = 0; ntt_iter < (1<<(2*`RING_DEPTH-`LOG_N)); ntt_iter=ntt_iter+1) begin: NTT_ITER_LOOP
+    for(ntt_iter = 0; ntt_iter < (1<<(2*`LOG_COEF_PER_CC-`LOG_N)); ntt_iter=ntt_iter+1) begin: NTT_ITER_LOOP
         NTT_const_mult #(.STREAM_SIZE(`NTT_DIV_BY_RING), 
         .PSI(`INVERSE_TWIDDLE_2N), 
         .OMEGA(modular_pow(`INVERSE_TWIDDLE_2N, `COEF_PER_CLOCK_CYCLE<<1, `MODULUS)), 

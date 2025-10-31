@@ -53,7 +53,7 @@ always @(posedge clk) begin
     end
 end
 
-reg [`LOG_N-`RING_DEPTH+`BATCH_DEPTH-1:0] counter_of_input_cycles;
+reg [`LOG_N-`LOG_COEF_PER_CC+`BATCH_DEPTH-1:0] counter_of_input_cycles;
 always @(posedge clk) begin
     if (reset) begin
         counter_of_input_cycles <= 0;
@@ -82,7 +82,7 @@ genvar m;
       .clka(clk),  // input wire CLK
       .dina(data_in_coefficients[m*`MODULUS_WIDTH+:(`LOG_N+1)]),      // input wire [9 : 0] D
       .addra(counter_of_input_cycles),
-      .addrb({counter_of_cycles[`LOG_N-`RING_DEPTH+`BATCH_DEPTH-1:`LOG_N-`RING_DEPTH], counter_of_cycles[`CMUX_COUNTER_SIZE-1:`LOG_N-`RING_DEPTH+`BATCH_DEPTH+`RING_DEPTH]}),
+      .addrb({counter_of_cycles[`LOG_N-`LOG_COEF_PER_CC+`BATCH_DEPTH-1:`LOG_N-`LOG_COEF_PER_CC], counter_of_cycles[`CMUX_COUNTER_SIZE-1:`LOG_N-`LOG_COEF_PER_CC+`BATCH_DEPTH+`LOG_COEF_PER_CC]}),
       //technically speaking the condition for the shift is that 
       // data_valid is true and counter_cycles is at the right cycle,
       // but we guarantee that data_valid is always true (once you get going)
@@ -94,7 +94,7 @@ endgenerate
 
  wire [(`LOG_N+1)-1:0] coefficient;
 
-assign coefficient = coef_addr_block[counter_of_cycles_reg_2[`LOG_N-`RING_DEPTH+`BATCH_DEPTH+:`RING_DEPTH]];//32:1 MUX
+assign coefficient = coef_addr_block[counter_of_cycles_reg_2[`LOG_N-`LOG_COEF_PER_CC+`BATCH_DEPTH+:`LOG_COEF_PER_CC]];//32:1 MUX
 
 
 
@@ -104,7 +104,7 @@ assign coefficient = coef_addr_block[counter_of_cycles_reg_2[`LOG_N-`RING_DEPTH+
 //data_valid goes in only if we're not loading coefficients
 
 //barrel_shift
-wire  [`RING_DEPTH-1:0] shift; 
+wire  [`LOG_COEF_PER_CC-1:0] shift; 
 wire coef_sign;
 wire data_memory_valid;
 wire [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] data_memory_in;
@@ -135,14 +135,14 @@ shift_reg_width  #(.shift(`NTT_DIV_BY_RING+3), .width(1)) coef_storage_space (
 );
 
 wire [`LOG_N-1+1:0] invert_coef = `NTT_POLYNOMIAL_SIZE - coef_from_barrel[`LOG_N-1:0];
-assign shift = coefficient[`RING_DEPTH-1:0];
+assign shift = coefficient[`LOG_COEF_PER_CC-1:0];
 barrel_shifter barrel_instance(clk,data_in_reg_2, shift, data_valid_reg_2, data_memory_valid, data_memory_in);
 //barrel has a latency of 6 cycles
 
 //Control logic
 wire data_barrel_valid;
-wire [`LOG_N-`RING_DEPTH+1-1:0] write_addr;
-wire [(`LOG_N-`RING_DEPTH+1)*`COEF_PER_CLOCK_CYCLE-1:0] read_addr;
+wire [`LOG_N-`LOG_COEF_PER_CC+1-1:0] write_addr;
+wire [(`LOG_N-`LOG_COEF_PER_CC+1)*`COEF_PER_CLOCK_CYCLE-1:0] read_addr;
 wire [`COEF_PER_CLOCK_CYCLE-1:0] sign_data;
 addr_generation_unit_CMUX control(.clk(clk), .reset(reset),
 .invert_coef(invert_coef),
@@ -166,7 +166,7 @@ BRAM_custom #(
         ) BRAM_instance (
             .clka(clk),
             .addra(write_addr),
-            .addrb(read_addr[i*(`LOG_N-`RING_DEPTH+1)+:(`LOG_N-`RING_DEPTH+1)]),
+            .addrb(read_addr[i*(`LOG_N-`LOG_COEF_PER_CC+1)+:(`LOG_N-`LOG_COEF_PER_CC+1)]),
             .dina(data_memory_in[(i+1)*`MODULUS_WIDTH-1:i*`MODULUS_WIDTH]),
             .wea(data_memory_valid),// The idea being
              //that each bram is loaded one at a time
@@ -179,7 +179,7 @@ wire [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] data_buffer_out;
 generate
 genvar n;
 for (n= 0; n<`COEF_PER_CLOCK_CYCLE; n=n+1) begin: NON_MODIFIED_MEM
-shift_reg_width  #(.shift((`RING_DEPTH+1)+`NTT_DIV_BY_RING+3), .width(`MODULUS_WIDTH)) coef_storage_space (
+shift_reg_width  #(.shift((`LOG_COEF_PER_CC+1)+`NTT_DIV_BY_RING+3), .width(`MODULUS_WIDTH)) coef_storage_space (
   .clk(clk),  // input wire CLK
   .data_in(data_in_reg_2[n*`MODULUS_WIDTH+:`MODULUS_WIDTH]),      // input wire [9 : 0] D
   .data_out(data_buffer_out[n*`MODULUS_WIDTH+:`MODULUS_WIDTH])      // output wire [9 : 0] Q

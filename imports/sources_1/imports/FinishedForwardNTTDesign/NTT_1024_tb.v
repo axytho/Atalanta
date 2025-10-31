@@ -61,13 +61,13 @@ function [`MODULUS_WIDTH-1:0] modular_pow;
  end
 endfunction
 // NTT_128
-NTT_const_mult #(.STREAM_SIZE(`COEF_PER_CLOCK_CYCLE), 
+/*NTT_const_mult #(.STREAM_SIZE(`COEF_PER_CLOCK_CYCLE), 
 .PSI(modular_pow(`TWIDDLE_2N, 1, `MODULUS)), 
 .OMEGA(modular_pow(`TWIDDLE_2N, 2, `MODULUS)), 
 .PRECOMP_FACTOR(`PRECOMP_FACTOR)) 
-NTT_128_instance(clk,NTT_IN_wire,data_valid, data_valid_out, NTT_OUT_wire);
+NTT_128_instance(clk,NTT_IN_wire,data_valid, data_valid_out, NTT_OUT_wire);*/
 
-
+Bailey_NTT NTT_128_instance(clk,reset, NTT_IN_wire,data_valid, data_valid_out, NTT_OUT_wire);
 // matrix_rectangular_transpose #(.direction("FORWARD")) matrix_3(clk, reset, NTT_IN_wire_3, data_ntt_valid_3,data_valid_out, NTT_OUT_wire);
 
 initial begin
