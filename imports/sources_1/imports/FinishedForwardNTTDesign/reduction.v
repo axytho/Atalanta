@@ -27,7 +27,7 @@ module reduction
     output [`MODULUS_WIDTH-1:0] data_out
     );
     
-
+if (`MODULUS == 20'hc0001) begin
 wire [22:0] sub_res;
 reg [22:0] sub_res_reg;
 reg [`MODULUS_WIDTH-1:0] result_reg;
@@ -61,4 +61,64 @@ always @(posedge clk) begin
 end
 
 assign data_out = result_reg;
+end else if (`MODULUS == 12'hd01) begin
+
+// stage 1
+function [63:0] LUT_parameter;
+ input [3:0] LUT_index;
+ integer i;
+ integer full_output;
+ begin
+    for (i=0; i<64; i=i+1) begin
+        full_output = (i << 18) % 3329;
+        LUT_parameter[i] = full_output[LUT_index];
+    end
+ end
+endfunction
+wire [11:0] LUT_out;
+
+    genvar i;
+    for (i=0; i<12; i=i+1) begin: LUTS
+      LUT6 #(
+     .INIT(LUT_parameter(i))  // Specify LUT Contents
+      ) LUT6_inst (
+             .O(LUT_out[i]),   // LUT general output
+         .I0(data_in[18]), // LUT input
+         .I1(data_in[19]), // LUT input
+         .I2(data_in[20]), // LUT input
+         .I3(data_in[21]), // LUT input
+         .I4(data_in[22]), // LUT input
+         .I5(data_in[23])  // LUT input
+      );
+    end
+
+wire [18:0] LUT_reduced;
+assign LUT_reduced = data_in[17:0] + LUT_out;
+reg [18:0] LUT_reduced_reg;
+always @(posedge clk) begin
+    LUT_reduced_reg <= LUT_reduced;
+end
+//stage 2
+wire [13:0] Kred_upper;
+wire [10:0] Kred_lower;
+assign Kred_upper =  LUT_reduced_reg[18:8] - {2'b0, LUT_reduced_reg[7:0], 3'b0};
+assign Kred_lower = {2'b0, LUT_reduced_reg[7:0]} + {LUT_reduced_reg[7:0], 2'b0};
+wire [12:0] Kred_result;
+assign Kred_result = Kred_upper - Kred_lower;
+reg [12:0] Kred_result_reg;
+always @(posedge clk) begin
+    Kred_result_reg <= Kred_result;
+end
+//stage 3
+wire [12:0] total_sum;
+assign total_sum = Kred_result_reg;
+wire [12:0] plus_or_zero_q;
+assign plus_or_zero_q = (total_sum[12] ? 12'hd01 : 0);
+assign data_out = total_sum + plus_or_zero_q;
+end else begin
+
+// @ USER: Write your custom modulus reduction function from 2*MODULUS_WIDTH to MODULUS_WIDTH here!
+
+
+end
 endmodule
