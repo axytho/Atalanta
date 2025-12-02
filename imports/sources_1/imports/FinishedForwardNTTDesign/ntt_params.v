@@ -6,40 +6,44 @@
 
 //TODO
 
-//Multiplier (For the device in use, generate an ip module or write your own verilog
-// with the name of custom_multiplier. Fill in the latency in this parameter)
-`define MULTIPLIER_LATENCY 3 // for 12x12 multipliers
-//`define MULTIPLIER_LATENCY 4 // for 20x20 bit multipliers
+
+/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+
 
 //NTT application-specific user-defined parameters
 // i.e. the cryptographical algorithm usually decides what goes here
 // although the user may have some lattitude in picking the modulus
 // (contact your local cryptographer for more details)
 `define LOG_N 8
-
-`define MODULUS       12'b110100000001
-`define REDUCED_POLYNOMIAL_DEPTH 1 // = min(0, LOG_N - log2(gcd(2^LOG_N,MODULUS-1))+1) 
-// i.e. the highest power of two that divided modulus -1, figure out what this power is and 
-// if this power is LOG_N + 1 or higher, the exponent of the polynomials is 0 and we have 
-// fully reduced the polynomials, if power is  LOG_N or smaller, the depth
-// is equal to LOG_N + 1 - power
+`define MODULUS 12'b110100000001
 `define TWIDDLE_2N 17
 
 
-//NTT hardware-specific user-defined parameters
-`define COEF_PER_CLOCK_CYCLE       (1 << 7)
 
 // python program defined parameters (for stuff too complicated to generate through verilog functions)
 `define INVERSE_TWIDDLE_2N 1175 //INVERSE_TWIDDLE_2N = pow(TWIDDLE_2N, -1, MODULUS)
-`define PRECOMP_FACTOR   1 //butterfly multiplier precomp factor, 
-                            //will always be one unless you change modular reduction 
-                            //inside the butterflies
-`define PRECOMP_FACTOR_NORMAL_MULT   524289 // for multiplication outside butterflies
+`define PRECOMP_FACTOR   1 //butterfly multiplier precomp factor,
+                           //will always be one unless you change modular reduction
+                           //inside the butterflies to use something that isn't LUT
+`define PRECOMP_FACTOR_NORMAL_MULT   3073 // for multiplication outside butterflies
                                             // if K-reduction, should be equal to
                                             // pow(K, -1, MODULUS)
                                             // with K so that MODULUS = K << SHIFT + 1
                                             // for some SHIFT
-`define INVERSE_N 3316 //pow(N, -1, 3329) = pow(256,-1,3329)
+`define INVERSE_N 3316 //pow(N, -1, modulus) = pow(1<<LOG_N,-1,modulus)
+`define REDUCED_POLYNOMIAL_DEPTH 1 // = max(0, LOG_N - log2(gcd(2^LOG_N,MODULUS-1))+1)
+// i.e. the highest power of two that divided modulus -1, figure out what this power is and
+// if this power is LOG_N + 1 or higher, the exponent of the polynomials is 0 and we have
+// fully reduced the polynomials, if power is  LOG_N or smaller, the depth
+// is equal to LOG_N + 1 - power
+
+/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+
+
+//NTT hardware-specific user-defined parameters
+`define COEF_PER_CLOCK_CYCLE       (1 << 8)
 
 //DESIGN DETERMINED parameters (TO BE PARAMETRIZED)
 `define JEWEL_REGISTERS 2 //PERHAPS PARAMETRIZE AS 
@@ -47,6 +51,10 @@
 
 `define REDUCTION_LATENCY 2
 
+//Multiplier (For the device in use, generate an ip module or write your own verilog
+// with the name of custom_multiplier. Fill in the latency in this parameter)
+`define MULTIPLIER_LATENCY 3 // for 12x12 multipliers
+//`define MULTIPLIER_LATENCY 4 // for 20x20 bit multipliers
 
 
 

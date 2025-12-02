@@ -19,14 +19,17 @@
 
 `include "parameters.v" 
 `include "ntt_params.v"
-module Bailey_NTT(
+module Bailey_NTT #(parameter COEF_PER_CLOCK = (`COEF_PER_CLOCK_CYCLE>>1))(
     input clk,
     input reset,
-    input [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] data_in,
+    input [COEF_PER_CLOCK*`MODULUS_WIDTH-1:0] data_in,
     input data_valid,
     output data_valid_out,
-    output [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] data_out
+    output [COEF_PER_CLOCK*`MODULUS_WIDTH-1:0] data_out
     );
+    
+localparam LOG_COEF_PER_CC = ($clog2(COEF_PER_CLOCK));
+localparam LOG_N_adjusted = (`LOG_N - `REDUCED_POLYNOMIAL_DEPTH);
     
 function [`MODULUS_WIDTH-1:0] modular_pow;
  input [2*`MODULUS_WIDTH-1:0] base;
@@ -50,16 +53,16 @@ function [`MODULUS_WIDTH-1:0] modular_pow;
 endfunction
 
 
-wire [`COEF_PER_CLOCK_CYCLE*(`MODULUS_WIDTH)-1:0]  barrel_in_wire_2, barrel_in_wire_3;
-wire [`COEF_PER_CLOCK_CYCLE*(`MODULUS_WIDTH)-1:0] NTT_IN_wire_GOLD_MODULUS, NTT_IN_wire_GOLD_MODULUS_2;
-wire [`COEF_PER_CLOCK_CYCLE*(`MODULUS_WIDTH)-1:0]  NTT_IN_wire_2;
-wire [`COEF_PER_CLOCK_CYCLE*(`MODULUS_WIDTH)-1:0] NTT_OUT_wire, NTT_OUT_wire_2;
-wire [(`MODULUS_WIDTH)-1:0] internal_wiring [0:(`COEF_PER_CLOCK_CYCLE)-1];
-wire [(`MODULUS_WIDTH)-1:0] internal_wiring_2 [0:(`COEF_PER_CLOCK_CYCLE)-1];
-wire [(`MODULUS_WIDTH)-1:0] twiddle_out [0:(`COEF_PER_CLOCK_CYCLE)-1];
-wire [(`MODULUS_WIDTH)-1:0] mult_out [0:(`COEF_PER_CLOCK_CYCLE)-1];
+wire [COEF_PER_CLOCK*(`MODULUS_WIDTH)-1:0]  barrel_in_wire_2, barrel_in_wire_3;
+wire [COEF_PER_CLOCK*(`MODULUS_WIDTH)-1:0] NTT_IN_wire_GOLD_MODULUS, NTT_IN_wire_GOLD_MODULUS_2;
+wire [COEF_PER_CLOCK*(`MODULUS_WIDTH)-1:0]  NTT_IN_wire_2;
+wire [COEF_PER_CLOCK*(`MODULUS_WIDTH)-1:0] NTT_OUT_wire, NTT_OUT_wire_2;
+wire [(`MODULUS_WIDTH)-1:0] internal_wiring [0:(COEF_PER_CLOCK)-1];
+wire [(`MODULUS_WIDTH)-1:0] internal_wiring_2 [0:(COEF_PER_CLOCK)-1];
+wire [(`MODULUS_WIDTH)-1:0] twiddle_out [0:(COEF_PER_CLOCK)-1];
+wire [(`MODULUS_WIDTH)-1:0] mult_out [0:(COEF_PER_CLOCK)-1];
 wire  data_multiplier_valid, data_barrel_2_valid, data_ntt_valid_2;
-wire [(1<<(2*`LOG_COEF_PER_CC-`LOG_N))-1:0] data_ntt_2_valid_out;
+wire [(1<<(2*LOG_COEF_PER_CC-LOG_N_adjusted))-1:0] data_ntt_2_valid_out;
 wire twiddle_valid;
 
 
@@ -69,7 +72,7 @@ wire twiddle_valid;
   
 
 // NTT_64
-NTT_const_mult #(.STREAM_SIZE(`COEF_PER_CLOCK_CYCLE), 
+NTT_const_mult #(.STREAM_SIZE(COEF_PER_CLOCK), 
 .PSI(modular_pow(`TWIDDLE_2N, `NTT_DIV_BY_RING, `MODULUS)), 
 .OMEGA(modular_pow(`TWIDDLE_2N, `NTT_DIV_BY_RING<<1, `MODULUS)), 
 .PRECOMP_FACTOR(`PRECOMP_FACTOR)) 
@@ -81,7 +84,7 @@ generate
 
 endgenerate 
 generate
-if (`LOG_COEF_PER_CC==`LOG_N) begin
+if (LOG_COEF_PER_CC==LOG_N_adjusted) begin
     assign data_out = NTT_OUT_wire;
     assign data_valid_out = data_multiplier_valid;
 end else begin
@@ -90,7 +93,7 @@ end else begin
 shift_reg_data_valid #(`FIRST_NTT_LATENCY-1) twiddle_instance (clk, data_valid, twiddle_valid);   
 shift_reg_data_valid #(`MULTIPLIER_LATENCY+`REDUCTION_LATENCY) shift_instance_2 (clk, data_multiplier_valid, data_barrel_2_valid);  
     genvar k;
-    for(k = 0; k < `COEF_PER_CLOCK_CYCLE; k=k+1) begin: INITIAL
+    for(k = 0; k < COEF_PER_CLOCK; k=k+1) begin: INITIAL
         // MODULUS_WIDTH - `MODULUS_WIDTH
         modular_multiplier modular_multiplier(
         .clk(clk),.input_a(NTT_OUT_wire[(k+1)*(`MODULUS_WIDTH)-1:k*(`MODULUS_WIDTH)]), .input_b(twiddle_out[k]), 
@@ -101,7 +104,7 @@ shift_reg_data_valid #(`MULTIPLIER_LATENCY+`REDUCTION_LATENCY) shift_instance_2 
 //multiplier ROM (requires 
 // BRAM
      genvar m;
-    for(m = 0; m < `COEF_PER_CLOCK_CYCLE; m=m+1) begin: BARREL_2
+    for(m = 0; m < COEF_PER_CLOCK; m=m+1) begin: BARREL_2
         // MODULUS_WIDTH - `MODULUS_WIDTH
         assign barrel_in_wire_2[m*`MODULUS_WIDTH+:`MODULUS_WIDTH] = mult_out[m] ;
     end
@@ -110,10 +113,10 @@ shift_reg_data_valid #(`MULTIPLIER_LATENCY+`REDUCTION_LATENCY) shift_instance_2 
 
 
     genvar ntt_iter;
-    for(ntt_iter = 0; ntt_iter < (1<<(2*`LOG_COEF_PER_CC-`LOG_N)); ntt_iter=ntt_iter+1) begin: NTT_ITER_LOOP
+    for(ntt_iter = 0; ntt_iter < (1<<(2*LOG_COEF_PER_CC-LOG_N_adjusted)); ntt_iter=ntt_iter+1) begin: NTT_ITER_LOOP
         NTT_const_mult #(.STREAM_SIZE(`NTT_DIV_BY_RING), 
         .PSI(1),//`TWIDDLE_2N is integrated into pointwise multiplication 
-        .OMEGA(modular_pow(`TWIDDLE_2N, `COEF_PER_CLOCK_CYCLE<<1, `MODULUS)), 
+        .OMEGA(modular_pow(`TWIDDLE_2N, COEF_PER_CLOCK<<1, `MODULUS)), 
         .PRECOMP_FACTOR(`PRECOMP_FACTOR)) NTT_16_inst(
         clk,
         NTT_IN_wire_2[ntt_iter*`NTT_DIV_BY_RING*`MODULUS_WIDTH+:`NTT_DIV_BY_RING*`MODULUS_WIDTH],

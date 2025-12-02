@@ -43,7 +43,7 @@ function [`MODULUS_WIDTH-1:0] modular_pow;
         modular_pow = 1;
         while ( exponent > 0) begin
             if (exponent[0] == 1)
-                modular_pow = ({20'b0,modular_pow} * base) % modulus;
+                modular_pow = ({ {`MODULUS_WIDTH{1'b0}} ,modular_pow} * base) % modulus;
             exponent = exponent >> 1;
             base = (base * base) % modulus;
         
