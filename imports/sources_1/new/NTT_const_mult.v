@@ -23,7 +23,7 @@
 
 `include "parameters.v" 
 `include "ntt_params.v"
-module NTT_const_mult #(parameter STREAM_SIZE = 32, parameter PSI = 1, parameter OMEGA = 1, parameter PRECOMP_FACTOR = 1, parameter DIRECTION="FORWARD", parameter REDUCED_POLYNOMIAL_DEPTH=`REDUCED_POLYNOMIAL_DEPTH) (
+module NTT_const_mult #(parameter STREAM_SIZE = 32, parameter PSI = 1, parameter OMEGA = 1, parameter PRECOMP_FACTOR = 1, parameter DIRECTION="FORWARD", parameter REDUCED_POLYNOMIAL_DEPTH=0) (
     input clk,
     input [STREAM_SIZE*(`MODULUS_WIDTH)-1:0] data_in,
     input data_valid,
@@ -70,7 +70,7 @@ if (DIRECTION=="FORWARD") begin
                             .TWIDDLE(
                             modular_mult(
                             modular_mult(PRECOMP_FACTOR, modular_pow(PSI,(1<<STREAM_DEPTH_MODDED)>>(stage+1), `MODULUS ) ,`MODULUS),
-                            modular_pow(OMEGA, bit_inverse(block_number)>>(1+`REDUCED_POLYNOMIAL_DEPTH), `MODULUS),
+                            modular_pow(OMEGA, bit_inverse(block_number)>>(1+REDUCED_POLYNOMIAL_DEPTH), `MODULUS),
                             `MODULUS)
                             ),
                             .STAGE(stage)

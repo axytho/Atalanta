@@ -75,7 +75,9 @@ wire twiddle_valid;
 NTT_const_mult #(.STREAM_SIZE(COEF_PER_CLOCK), 
 .PSI(modular_pow(`TWIDDLE_2N, `NTT_DIV_BY_RING, `MODULUS)), 
 .OMEGA(modular_pow(`TWIDDLE_2N, `NTT_DIV_BY_RING<<1, `MODULUS)), 
-.PRECOMP_FACTOR(`PRECOMP_FACTOR)) 
+.PRECOMP_FACTOR(`PRECOMP_FACTOR),
+.DIRECTION("FORWARD"),
+.REDUCED_POLYNOMIAL_DEPTH(0)) 
 NTT_64_instance(clk,data_in,data_valid, data_multiplier_valid, NTT_OUT_wire);
    
 
