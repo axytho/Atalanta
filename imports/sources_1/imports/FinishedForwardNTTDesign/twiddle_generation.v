@@ -30,7 +30,7 @@ module twiddle_generation #(parameter TWIDDLE_INDEX= 0, parameter DIRECTION = "F
     output [`MODULUS_WIDTH-1:0] twiddle
     );
     
-reg [`LOG_N-`LOG_COEF_PER_CC-1:0] counter;
+reg [`LOG_N_BAILEY_NTT-`LOG_COEF_PER_CC_BAILEY_NTT-1:0] counter;
 reg [`MODULUS_WIDTH-1:0] twiddle_output;
 wire [`MODULUS_WIDTH-1:0] OMEGA [`NTT_DIV_BY_RING-1:0];
 function [`MODULUS_WIDTH-1:0] modular_pow;

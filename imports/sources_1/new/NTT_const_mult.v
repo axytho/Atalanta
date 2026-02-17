@@ -39,6 +39,7 @@ localparam STAGE_REDUCTION = `STAGE_REDUCTION;
 
 
 wire [`MODULUS_WIDTH-1:0] data_out_bit_reversed [0:STREAM_SIZE-1];
+wire [`MODULUS_WIDTH-1:0] data_out_bit_normal [0:STREAM_SIZE-1];
 
 // DATA_VALID delay
 shift_reg_data_valid #(`JEWEL_REGISTERS*STREAM_DEPTH_MODDED+`TAIL_REDUCTION) shift_instance (clk, data_valid, data_valid_out);
@@ -49,9 +50,9 @@ if (DIRECTION=="FORWARD") begin
 
     genvar k;
     for(k = 0; k < STREAM_SIZE; k=k+1) begin: BIT_REVERSE_INDEX
-        //assign data_out_bit_reversed[bit_inverse(k[STREAM_DEPTH-1:0])] = internal_wiring[STREAM_DEPTH*STREAM_SIZE + k];
+        assign data_out_bit_reversed[bit_inverse(k[STREAM_DEPTH-1:0])] = data_out_bit_normal[(k[STREAM_DEPTH-1:0])];
         //TODO: probably the last two elements won't have to be bitreversed, so the bit_reverse function will have to be slightly modified.
-        reduction_tail_ntt #(.ADDED_WIDTH(REDUCTION_ADDED_WIDTH)) reduction(.clk(clk), .data_in(internal_wiring[STREAM_DEPTH_MODDED*STREAM_SIZE + k]), .data_out(data_out_bit_reversed[(k[STREAM_DEPTH-1:0])]));
+        reduction_tail_ntt #(.ADDED_WIDTH(REDUCTION_ADDED_WIDTH)) reduction(.clk(clk), .data_in(internal_wiring[STREAM_DEPTH_MODDED*STREAM_SIZE + k]), .data_out(data_out_bit_normal[(k[STREAM_DEPTH-1:0])]));
     end
     genvar i;
     for(i = 0; i < STREAM_SIZE; i=i+1) begin: INITIAL
@@ -92,8 +93,8 @@ end else begin
     end
     genvar k;
     for(k = 0; k < STREAM_SIZE; k=k+1) begin: BIT_REVERSE_INDEX
-        //assign data_out_bit_reversed[bit_inverse(k[STREAM_DEPTH-1:0])] = internal_wiring[STREAM_DEPTH*STREAM_SIZE + k];
-        reduction_tail_ntt #(.ADDED_WIDTH(REDUCTION_ADDED_WIDTH_GS)) reduction(.clk(clk), .data_in(internal_wiring[STREAM_DEPTH*STREAM_SIZE + k]), .data_out(data_out_bit_reversed[bit_inverse(k[STREAM_DEPTH-1:0])]));
+        assign data_out_bit_reversed[bit_inverse(k[STREAM_DEPTH-1:0])] = data_out_bit_normal[(k[STREAM_DEPTH-1:0])];
+        reduction_tail_ntt #(.ADDED_WIDTH(REDUCTION_ADDED_WIDTH_GS)) reduction(.clk(clk), .data_in(internal_wiring[STREAM_DEPTH*STREAM_SIZE + k]), .data_out(data_out_bit_normal[(k[STREAM_DEPTH-1:0])]));
     end
     genvar stage;
     genvar block_number;

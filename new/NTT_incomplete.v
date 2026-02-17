@@ -39,7 +39,7 @@ for (i=0; i<`COEF_PER_CLOCK_CYCLE; i=i+1) begin
     assign data_in_grouped[(i[`REDUCED_POLYNOMIAL_DEPTH-1:0])][(i[`LOG_N-1:`REDUCED_POLYNOMIAL_DEPTH])*`MODULUS_WIDTH+:`MODULUS_WIDTH] = data_in[i*`MODULUS_WIDTH+:`MODULUS_WIDTH];
 end
 for (j=0; j<(1<<`REDUCED_POLYNOMIAL_DEPTH); j=j+1) begin
-    Bailey_NTT #((`COEF_PER_CLOCK_CYCLE>>`REDUCED_POLYNOMIAL_DEPTH)) NTT_128_instance(clk,reset, data_in_grouped[j],data_valid, data_valid_out, data_in_grouped_out[j]);
+    Bailey_NTT NTT_128_instance(clk,reset, data_in_grouped[j],data_valid, data_valid_out, data_in_grouped_out[j]);
 end
 for (k=0; k<`COEF_PER_CLOCK_CYCLE; k=k+1) begin
     assign  data_out[k*`MODULUS_WIDTH+:`MODULUS_WIDTH] = data_in_grouped_out[(k[`REDUCED_POLYNOMIAL_DEPTH-1:0])][(k[`LOG_N-1:`REDUCED_POLYNOMIAL_DEPTH])*`MODULUS_WIDTH+:`MODULUS_WIDTH];

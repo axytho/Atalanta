@@ -32,9 +32,9 @@ parameter TWIDDLE_INDEX=0
     output [`MODULUS_WIDTH-1:0] twiddle
     );
     
-reg [`LOG_COEF_PER_CC-1:0] counter;
+reg [`LOG_COEF_PER_CC_BAILEY_NTT-1:0] counter;
 reg [`MODULUS_WIDTH-1:0] twiddle_output;
-wire [`MODULUS_WIDTH-1:0] OMEGA [`COEF_PER_CLOCK_CYCLE-1:0];
+wire [`MODULUS_WIDTH-1:0] OMEGA [`COEF_PER_CLOCK_CYCLE_BAILEY_NTT-1:0];
 
 assign twiddle = twiddle_output;
 

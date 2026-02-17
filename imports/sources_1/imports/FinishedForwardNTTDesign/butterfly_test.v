@@ -29,10 +29,10 @@ reg [`MODULUS_WIDTH+$clog2(1+(STAGE)*5)-1:0] input_a;
 reg [`MODULUS_WIDTH+5-1:0] input_b;
 reg [`MODULUS_WIDTH-1:0] input_a_python [0:`TESTBENCH_SIZE*1-1];
 reg [`MODULUS_WIDTH-1:0] input_b_python [0:`TESTBENCH_SIZE*1-1];
-wire [`MODULUS_WIDTH+$clog2(1+(STAGE+1)*5)-1:0] output_a [0:(`COEF_PER_CLOCK_CYCLE>>1)-1];
-wire [`MODULUS_WIDTH+$clog2(1+(STAGE+1)*5)-1:0] output_b [0:(`COEF_PER_CLOCK_CYCLE>>1)-1]; //so we can test all outputs
-reg [`MODULUS_WIDTH-1:0] input_and_output_a_reg[0:`TESTBENCH_SIZE*(`COEF_PER_CLOCK_CYCLE>>1)-1];
-reg [`MODULUS_WIDTH-1:0] input_and_output_b_reg[0:`TESTBENCH_SIZE*(`COEF_PER_CLOCK_CYCLE>>1)-1];
+wire [`MODULUS_WIDTH+$clog2(1+(STAGE+1)*5)-1:0] output_a [0:(`COEF_PER_CLOCK_CYCLE_BAILEY_NTT>>1)-1];
+wire [`MODULUS_WIDTH+$clog2(1+(STAGE+1)*5)-1:0] output_b [0:(`COEF_PER_CLOCK_CYCLE_BAILEY_NTT>>1)-1]; //so we can test all outputs
+reg [`MODULUS_WIDTH-1:0] input_and_output_a_reg[0:`TESTBENCH_SIZE*(`COEF_PER_CLOCK_CYCLE_BAILEY_NTT>>1)-1];
+reg [`MODULUS_WIDTH-1:0] input_and_output_b_reg[0:`TESTBENCH_SIZE*(`COEF_PER_CLOCK_CYCLE_BAILEY_NTT>>1)-1];
 reg [2*`MODULUS_WIDTH-1:0] K_inverse = 524289;
 function [`MODULUS_WIDTH-1:0] modular_pow;
  input [2*`MODULUS_WIDTH-1:0] base;
@@ -66,7 +66,7 @@ endfunction
 always #5 clk=~clk;
 generate
     genvar i;
-    for(i = 0; i < (`COEF_PER_CLOCK_CYCLE>>1); i=i+1) begin: BUTTERFLIES
+    for(i = 0; i < (`COEF_PER_CLOCK_CYCLE_BAILEY_NTT>>1); i=i+1) begin: BUTTERFLIES
 
 		                    //butterfly #(.TWIDDLE((524289*(146569**(i)))%`MODULUS)) 
 	butterfly_jewel #(.TWIDDLE(modular_mult(1,modular_pow(146569,`MODULUS, i),`MODULUS)), .DIRECTION("FORWARD"), .STAGE(STAGE))
@@ -97,29 +97,29 @@ initial begin: TEST_BUTTERFLY
         input_a = input_a_python[test_bench];
         input_b = input_b_python[test_bench];
         #30; //(1+BUTTERFLY_LATENCY)
-        for(m=0; m<((`COEF_PER_CLOCK_CYCLE>>1)); m=m+1) begin
-            if(input_and_output_a_reg[test_bench*(`COEF_PER_CLOCK_CYCLE>>1)+m] == output_a[m]%`MODULUS) begin
+        for(m=0; m<((`COEF_PER_CLOCK_CYCLE_BAILEY_NTT>>1)); m=m+1) begin
+            if(input_and_output_a_reg[test_bench*(`COEF_PER_CLOCK_CYCLE_BAILEY_NTT>>1)+m] == output_a[m]%`MODULUS) begin
                 iterator_a = iterator_a+1;
             end
             else begin
-                $display("a: Testbench: %d Index-%d --Expected :%d, Calculated:%d",test_bench, m,input_and_output_a_reg[test_bench*(`COEF_PER_CLOCK_CYCLE>>1)+m],output_a[m]%`MODULUS);
+                $display("a: Testbench: %d Index-%d --Expected :%d, Calculated:%d",test_bench, m,input_and_output_a_reg[test_bench*(`COEF_PER_CLOCK_CYCLE_BAILEY_NTT>>1)+m],output_a[m]%`MODULUS);
             end
-            if(input_and_output_b_reg[test_bench*(`COEF_PER_CLOCK_CYCLE>>1)+m]== output_b[m]%`MODULUS) begin
+            if(input_and_output_b_reg[test_bench*(`COEF_PER_CLOCK_CYCLE_BAILEY_NTT>>1)+m]== output_b[m]%`MODULUS) begin
                 iterator_b = iterator_b+1;
             end
             else begin
-                $display("b: Testbench: %d Index-%d -- Expected :%d, Calculated:%d",test_bench, m,input_and_output_b_reg[test_bench*(`COEF_PER_CLOCK_CYCLE>>1)+m],output_b[m]%`MODULUS);
+                $display("b: Testbench: %d Index-%d -- Expected :%d, Calculated:%d",test_bench, m,input_and_output_b_reg[test_bench*(`COEF_PER_CLOCK_CYCLE_BAILEY_NTT>>1)+m],output_b[m]%`MODULUS);
             end
         end
         #100;
     end
 
-	if(iterator_a == ((`COEF_PER_CLOCK_CYCLE>>1)*`TESTBENCH_SIZE))
+	if(iterator_a == ((`COEF_PER_CLOCK_CYCLE_BAILEY_NTT>>1)*`TESTBENCH_SIZE))
 		$display("a:  Correct");
 	else
 		$display("a:  Incorrect");
 
-	if(iterator_b == ((`COEF_PER_CLOCK_CYCLE>>1)*`TESTBENCH_SIZE))
+	if(iterator_b == ((`COEF_PER_CLOCK_CYCLE_BAILEY_NTT>>1)*`TESTBENCH_SIZE))
 		$display("b:  Correct");
 	else
 		$display("b:  Incorrect");
