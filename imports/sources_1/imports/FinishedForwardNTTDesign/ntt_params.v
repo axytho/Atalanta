@@ -11,7 +11,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 
-//NTT application-specific user-defined parameters
+// NTT application-specific user-defined parameters
 // i.e. the cryptographical algorithm usually decides what goes here
 // although the user may have some lattitude in picking the modulus
 // (contact your local cryptographer for more details)
@@ -26,6 +26,9 @@
 `define PRECOMP_FACTOR   1 //butterfly multiplier precomp factor,
                            //will always be one unless you change modular reduction
                            //inside the butterflies to use something that isn't LUT
+`define NUMBER_OF_PRECOMPS_NECESSARY   1 //1 if you only do K-reduction in the multiplier halfway,
+                                         //3 if you use it for tail reduction as well 
+                                         //can be anything depending on number of multipliers 
 `define PRECOMP_FACTOR_NORMAL_MULT   3073 // for multiplication outside butterflies
                                             // if K-reduction, should be equal to
                                             // pow(K, -1, MODULUS)
@@ -37,6 +40,7 @@
 // if this power is LOG_N + 1 or higher, the exponent of the polynomials is 0 and we have
 // fully reduced the polynomials, if power is  LOG_N or smaller, the depth
 // is equal to LOG_N + 1 - power
+
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
