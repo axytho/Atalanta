@@ -29,7 +29,7 @@
 `define NUMBER_OF_PRECOMPS_NECESSARY   1 //1 if you only do K-reduction in the multiplier halfway,
                                          //3 if you use it for tail reduction as well 
                                          //can be anything depending on number of multipliers 
-`define PRECOMP_FACTOR_NORMAL_MULT   3073 // for multiplication outside butterflies
+`define PRECOMP_FACTOR_NORMAL_MULT   256 // for multiplication outside butterflies
                                             // if K-reduction, should be equal to
                                             // pow(K, -1, MODULUS)
                                             // with K so that MODULUS = K << SHIFT + 1

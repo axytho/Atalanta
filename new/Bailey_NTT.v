@@ -74,7 +74,7 @@ NTT_const_mult #(.STREAM_SIZE(`COEF_PER_CLOCK_CYCLE_BAILEY_NTT),
 .PRECOMP_FACTOR(`PRECOMP_FACTOR),
 .DIRECTION("FORWARD"),
 .REDUCED_POLYNOMIAL_DEPTH(0)) 
-NTT_64_instance(clk,matrix_1_data_out,matrix_1_data_valid_out, data_multiplier_valid, NTT_OUT_wire);
+FIRST_NTT_OF_BAILEY_NTT_instance(clk,matrix_1_data_out,matrix_1_data_valid_out, data_multiplier_valid, NTT_OUT_wire);
    
 
       
@@ -94,7 +94,7 @@ matrix_rectangular_transpose #(.STREAM_SIZE_SQUARE_MATRIX(`NTT_DIV_BY_RING), .di
 
 
 
-shift_reg_data_valid #(`FIRST_NTT_LATENCY-1) twiddle_instance (clk, data_valid, twiddle_valid);   
+shift_reg_data_valid #(`FIRST_NTT_LATENCY-1) twiddle_instance (clk, matrix_1_data_valid_out, twiddle_valid);   
 shift_reg_data_valid #(`MULTIPLIER_LATENCY+`REDUCTION_LATENCY) shift_instance_2 (clk, data_multiplier_valid, data_barrel_2_valid);  
     genvar k;
     for(k = 0; k < `COEF_PER_CLOCK_CYCLE_BAILEY_NTT; k=k+1) begin: INITIAL
@@ -121,7 +121,7 @@ shift_reg_data_valid #(`MULTIPLIER_LATENCY+`REDUCTION_LATENCY) shift_instance_2 
         NTT_const_mult #(.STREAM_SIZE(`NTT_DIV_BY_RING), 
         .PSI(1),//`TWIDDLE_2N is integrated into pointwise multiplication 
         .OMEGA(modular_pow(`TWIDDLE_2N, `COEF_PER_CLOCK_CYCLE_BAILEY_NTT<<1, `MODULUS)), 
-        .PRECOMP_FACTOR(`PRECOMP_FACTOR)) NTT_16_inst(
+        .PRECOMP_FACTOR(`PRECOMP_FACTOR)) SECOND_NTT_OF_BAILEY_NTT_instance(
         clk,
         NTT_IN_wire_2[ntt_iter*`NTT_DIV_BY_RING*`MODULUS_WIDTH+:`NTT_DIV_BY_RING*`MODULUS_WIDTH],
         data_ntt_valid_2,
