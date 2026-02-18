@@ -121,7 +121,9 @@ shift_reg_data_valid #(`MULTIPLIER_LATENCY+`REDUCTION_LATENCY) shift_instance_2 
         NTT_const_mult #(.STREAM_SIZE(`NTT_DIV_BY_RING), 
         .PSI(1),//`TWIDDLE_2N is integrated into pointwise multiplication 
         .OMEGA(modular_pow(`TWIDDLE_2N, `COEF_PER_CLOCK_CYCLE_BAILEY_NTT<<1, `MODULUS)), 
-        .PRECOMP_FACTOR(`PRECOMP_FACTOR)) SECOND_NTT_OF_BAILEY_NTT_instance(
+        .PRECOMP_FACTOR(`PRECOMP_FACTOR),
+        .DIRECTION("FORWARD"),
+        .REDUCED_POLYNOMIAL_DEPTH(0)) SECOND_NTT_OF_BAILEY_NTT_instance(
         clk,
         NTT_IN_wire_2[ntt_iter*`NTT_DIV_BY_RING*`MODULUS_WIDTH+:`NTT_DIV_BY_RING*`MODULUS_WIDTH],
         data_ntt_valid_2,

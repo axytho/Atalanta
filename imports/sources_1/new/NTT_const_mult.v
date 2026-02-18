@@ -33,8 +33,10 @@ module NTT_const_mult #(parameter STREAM_SIZE = 32, parameter PSI = 1, parameter
 localparam STREAM_DEPTH = ($clog2(STREAM_SIZE));
 localparam STREAM_DEPTH_MODDED = STREAM_DEPTH-REDUCED_POLYNOMIAL_DEPTH;
 
-localparam REDUCTION_ADDED_WIDTH = ($clog2(STREAM_DEPTH_MODDED));
-localparam REDUCTION_ADDED_WIDTH_GS = STREAM_DEPTH_MODDED+($clog2(`MODULUS*`SECTIONS))- `MODULUS_WIDTH;
+//localparam REDUCTION_ADDED_WIDTH = ($clog2(STREAM_DEPTH_MODDED));
+//localparam REDUCTION_ADDED_WIDTH_GS = STREAM_DEPTH_MODDED+($clog2(`MODULUS*`SECTIONS))- `MODULUS_WIDTH;
+localparam REDUCTION_ADDED_WIDTH = 3; //Used to be a complicated system, now just one extra because butterfly was changed.
+localparam REDUCTION_ADDED_WIDTH_GS = 3;
 localparam STAGE_REDUCTION = `STAGE_REDUCTION;
 
 
