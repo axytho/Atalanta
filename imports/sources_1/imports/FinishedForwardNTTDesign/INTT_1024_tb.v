@@ -36,13 +36,13 @@ reg [(`MODULUS_WIDTH+1)-1:0] NTT_IN[0:`COEF_PER_CLOCK_CYCLE* `NTT_DIV_BY_RING-1]
 reg [(`MODULUS_WIDTH+1)-1:0] NTT_OUT [0:`COEF_PER_CLOCK_CYCLE*`NTT_DIV_BY_RING-1];
 always #5 clk=~clk;
 
- matrix_rectangular_transpose #(.direction("INVERSE")) matrix_1(clk, reset, NTT_IN_wire, data_valid,data_ntt_valid_2, NTT_IN_wire_2);
+//matrix_rectangular_transpose #(.direction("INVERSE")) matrix_1(clk, reset, NTT_IN_wire, data_valid,data_ntt_valid_2, NTT_IN_wire_2);
 
-INTT_1024 INTT_1024_element(clk, reset, NTT_IN_wire_2, data_ntt_valid_2,data_valid_out, NTT_OUT_wire);
+NTT_incomplete #(.DIRECTION("INVERSE")) INTT_1024_element(clk, reset, NTT_IN_wire, data_valid,data_valid_out, NTT_OUT_wire);
 
 initial begin
-	$readmemh("D:/Jonas/Google Drive/KULeuven6/ZPRICE/pythonGeneratorCode/Quinten/INTT_IN_1024.txt", NTT_IN);
-	$readmemh("D:/Jonas/Google Drive/KULeuven6/ZPRICE/pythonGeneratorCode/Quinten/INTT_OUT_1024.txt", NTT_OUT);
+	$readmemh("D:/Jonas/Google Drive/KULeuven8/ACompendiumOfButterflies/PythonChasingButterflies/INTT_IN_256.txt", NTT_IN);
+	$readmemh("D:/Jonas/Google Drive/KULeuven8/ACompendiumOfButterflies/PythonChasingButterflies/INTT_OUT_256.txt", NTT_OUT);
 end
 
 

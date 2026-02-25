@@ -9,7 +9,8 @@
 // Project Name: 
 // Target Devices: 
 // Tool Versions: 
-// Description: 
+// Description: See intt_N_HW_with_CoefPerClockCycle_optimized() in python,
+// the twiddle generation part
 // 
 // Dependencies: 
 // 
@@ -84,7 +85,6 @@ end
 generate
 genvar i;
 for (i=0; i<`NTT_DIV_BY_RING; i=i+1) begin
-    //should actually be TWIDDLE_1024, hence the factor 2 at the front.
     if (DIRECTION=="FORWARD") begin
     assign OMEGA[i] = modular_mult(
         modular_mult(
@@ -96,7 +96,7 @@ for (i=0; i<`NTT_DIV_BY_RING; i=i+1) begin
     end else begin
     assign OMEGA[i] = modular_mult(
         modular_mult(
-                 1,
+                 modular_pow(`INVERSE_TWIDDLE_2N,  TWIDDLE_INDEX, `MODULUS),
                 modular_mult(modular_pow(`PRECOMP_FACTOR_NORMAL_MULT,`NUMBER_OF_PRECOMPS_NECESSARY,`MODULUS), `INVERSE_N,`MODULUS), 
                 `MODULUS), 
         modular_pow(`INVERSE_TWIDDLE_2N, 2*TWIDDLE_INDEX *i, `MODULUS), 

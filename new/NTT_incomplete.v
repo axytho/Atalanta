@@ -22,7 +22,7 @@
 
 `include "parameters.v" 
 `include "ntt_params.v"
-module NTT_incomplete(
+module NTT_incomplete #(parameter DIRECTION = "FORWARD") (
     input clk,
     input reset,
     input [`COEF_PER_CLOCK_CYCLE*`MODULUS_WIDTH-1:0] data_in,
@@ -45,7 +45,7 @@ for (i=0; i<`COEF_PER_CLOCK_CYCLE; i=i+1) begin
     assign data_out[i*`MODULUS_WIDTH+:`MODULUS_WIDTH] = data_in_grouped_out_normal_per_ntt[(i[`REDUCED_POLYNOMIAL_DEPTH-1:0])][(i[`LOG_N-1:`REDUCED_POLYNOMIAL_DEPTH])*`MODULUS_WIDTH+:`MODULUS_WIDTH];
 end
 for (j=0; j<(1<<`REDUCED_POLYNOMIAL_DEPTH); j=j+1) begin
-    Bailey_NTT NTT_128_instance(clk,reset, data_in_grouped[j],data_valid, data_valid_out, data_in_grouped_out_normal_per_ntt[j]);
+    Bailey_NTT #(.DIRECTION(DIRECTION)) NTT_128_instance(clk,reset, data_in_grouped[j],data_valid, data_valid_out, data_in_grouped_out_normal_per_ntt[j]);
 end
 
 

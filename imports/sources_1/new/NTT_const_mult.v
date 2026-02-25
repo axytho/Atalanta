@@ -9,7 +9,8 @@
 // Project Name: Quatorze 14bis
 // Target Devices: 
 // Tool Versions: 
-// Description: 
+// Description: This piece of hardware is mirrored by the python function 
+// IterativeForwardNTT_pass_2 and IterativeInverseNTT_pass_2
 // 
 // Dependencies: 
 // 
@@ -67,15 +68,14 @@ if (DIRECTION=="FORWARD") begin
         for(stage = 0; stage < STREAM_DEPTH_MODDED; stage=stage+1) begin: STAGE_LOOP
             for (block_number = 0; block_number < (1<<stage); block_number=block_number+1) begin: BLOCK_LOOP
                     for (twiddle_exponent = 0; twiddle_exponent  < (STREAM_SIZE>>(stage+1)); twiddle_exponent = twiddle_exponent + 1) begin :  INSIDE_BLOCK
-                    // 244715 = psi^32 mod Q
-                    // we need to calculate 
                             butterfly_jewel #(
                             .TWIDDLE(
                             modular_mult(
                             modular_mult(PRECOMP_FACTOR, modular_pow(PSI,(1<<STREAM_DEPTH_MODDED)>>(stage+1), `MODULUS ) ,`MODULUS),
                             modular_pow(OMEGA, bit_inverse(block_number)>>(1+REDUCED_POLYNOMIAL_DEPTH), `MODULUS),
-                            `MODULUS)
+                            `MODULUS) //see python function for more information
                             ),
+                            .DIRECTION("FORWARD"),
                             .STAGE(stage)
                             )
                             butterfly0(.clk(clk),
@@ -102,21 +102,18 @@ end else begin
     genvar block_number;
     genvar twiddle_exponent;
     genvar reduction_index;
-    for(stage = 0; stage < STREAM_DEPTH; stage=stage+1) begin: STAGE_LOOP
+    for(stage = 0; stage < STREAM_DEPTH_MODDED; stage=stage+1) begin: STAGE_LOOP
         for (block_number = 0; block_number < (1<<stage); block_number=block_number+1) begin: BLOCK_LOOP
                 for (twiddle_exponent = 0; twiddle_exponent  < (STREAM_SIZE>>(stage+1)); twiddle_exponent = twiddle_exponent + 1) begin :  INSIDE_BLOCK
-                // 244715 = psi^32 mod Q
-                    // we need to calculate 
-                            butterfly_jewel_GS #(
+                            butterfly_jewel #(
                         .TWIDDLE(
                         modular_mult(
                         modular_mult(PRECOMP_FACTOR, modular_pow(PSI,1<<(stage), `MODULUS ) ,`MODULUS),
-                        modular_pow(OMEGA, twiddle_exponent<<stage, `MODULUS),
-                        `MODULUS)
+                            modular_pow(OMEGA, twiddle_exponent<<stage, `MODULUS),
+                        `MODULUS) //see python function for more information
                         ),
                         .DIRECTION("INVERSE"),
-                        .STAGE(stage),
-                        .STAGE_REDUCTION(STAGE_REDUCTION)
+                        .STAGE(stage)
                         )
                         butterfly0(.clk(clk),
                         .input_a(internal_wiring[stage*STREAM_SIZE+2*block_number*(STREAM_SIZE>>(stage+1)) + twiddle_exponent]), 

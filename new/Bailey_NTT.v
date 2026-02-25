@@ -18,7 +18,7 @@
 
 `include "parameters.v" 
 `include "ntt_params.v"
-module Bailey_NTT(
+module Bailey_NTT #(parameter DIRECTION = "FORWARD") (
     input clk,
     input reset,
     input [`COEF_PER_CLOCK_CYCLE_BAILEY_NTT*`MODULUS_WIDTH-1:0] data_in,
@@ -28,6 +28,14 @@ module Bailey_NTT(
     );
     
     
+localparam PSI_FIRST_PASS = (DIRECTION == "FORWARD") ? modular_pow(`TWIDDLE_2N, `NTT_DIV_BY_RING, `MODULUS) : 1;
+localparam OMEGA_FIRST_PASS = (DIRECTION == "FORWARD") ? modular_pow(`TWIDDLE_2N, `NTT_DIV_BY_RING<<1, `MODULUS) : modular_pow(`INVERSE_TWIDDLE_2N, `NTT_DIV_BY_RING<<1, `MODULUS);
+localparam PSI_SECOND_PASS = (DIRECTION == "FORWARD") ? 1 : modular_pow(`INVERSE_TWIDDLE_2N, `COEF_PER_CLOCK_CYCLE_BAILEY_NTT, `MODULUS);
+localparam OMEGA_SECOND_PASS = (DIRECTION == "FORWARD") ? modular_pow(`TWIDDLE_2N, `COEF_PER_CLOCK_CYCLE_BAILEY_NTT<<1, `MODULUS) : modular_pow(`INVERSE_TWIDDLE_2N, `COEF_PER_CLOCK_CYCLE_BAILEY_NTT<<1, `MODULUS);
+
+
+
+  
 function [`MODULUS_WIDTH-1:0] modular_pow;
  input [2*`MODULUS_WIDTH-1:0] base;
  input [`MODULUS_WIDTH-1:0] exponent;
@@ -69,10 +77,10 @@ wire twiddle_valid;
 
 // NTT_64
 NTT_const_mult #(.STREAM_SIZE(`COEF_PER_CLOCK_CYCLE_BAILEY_NTT), 
-.PSI(modular_pow(`TWIDDLE_2N, `NTT_DIV_BY_RING, `MODULUS)), 
-.OMEGA(modular_pow(`TWIDDLE_2N, `NTT_DIV_BY_RING<<1, `MODULUS)), 
+.PSI(PSI_FIRST_PASS), 
+.OMEGA(OMEGA_FIRST_PASS), 
 .PRECOMP_FACTOR(`PRECOMP_FACTOR),
-.DIRECTION("FORWARD"),
+.DIRECTION(DIRECTION),
 .REDUCED_POLYNOMIAL_DEPTH(0)) 
 FIRST_NTT_OF_BAILEY_NTT_instance(clk,matrix_1_data_out,matrix_1_data_valid_out, data_multiplier_valid, NTT_OUT_wire);
    
@@ -90,7 +98,7 @@ if (`LOG_COEF_PER_CC_BAILEY_NTT==`LOG_N_BAILEY_NTT) begin //alternatively: `LOG_
 end else begin
 //reduction + multiplier
 // MATRIX TRANSPOSE CAN BE DONE BEFORE, but if possible should be done in precomputation
-matrix_rectangular_transpose #(.STREAM_SIZE_SQUARE_MATRIX(`NTT_DIV_BY_RING), .direction("FORWARD")) matrix_1(clk, reset, data_in,data_valid, matrix_1_data_valid_out, matrix_1_data_out);  
+matrix_rectangular_transpose #(.STREAM_SIZE_SQUARE_MATRIX(`NTT_DIV_BY_RING), .DIRECTION("FORWARD")) matrix_1(clk, reset, data_in,data_valid, matrix_1_data_valid_out, matrix_1_data_out);  
 
 
 
@@ -102,7 +110,7 @@ shift_reg_data_valid #(`MULTIPLIER_LATENCY+`REDUCTION_LATENCY) shift_instance_2 
         modular_multiplier modular_multiplier(
         .clk(clk),.input_a(NTT_OUT_wire[(k+1)*(`MODULUS_WIDTH)-1:k*(`MODULUS_WIDTH)]), .input_b(twiddle_out[k]), 
         .output_product(mult_out[k]));
-        twiddle_generation #(k) twiddle_gen(clk, reset, twiddle_valid, twiddle_out[k]);
+        twiddle_generation #(.TWIDDLE_INDEX(k), .DIRECTION(DIRECTION)) twiddle_gen(clk, reset, twiddle_valid, twiddle_out[k]);
     end
  
 //multiplier ROM (requires 
@@ -112,17 +120,17 @@ shift_reg_data_valid #(`MULTIPLIER_LATENCY+`REDUCTION_LATENCY) shift_instance_2 
         // MODULUS_WIDTH - `MODULUS_WIDTH
         assign barrel_in_wire_2[m*`MODULUS_WIDTH+:`MODULUS_WIDTH] = mult_out[m] ;
     end
- matrix_rectangular_transpose #(.STREAM_SIZE_SQUARE_MATRIX(`NTT_DIV_BY_RING), .direction("BACKWARD")) matrix_2(clk, reset, barrel_in_wire_2, data_barrel_2_valid,data_ntt_valid_2, NTT_IN_wire_2);
+ matrix_rectangular_transpose #(.STREAM_SIZE_SQUARE_MATRIX(`NTT_DIV_BY_RING), .DIRECTION("BACKWARD")) matrix_2(clk, reset, barrel_in_wire_2, data_barrel_2_valid,data_ntt_valid_2, NTT_IN_wire_2);
 
 
 
     genvar ntt_iter;
     for(ntt_iter = 0; ntt_iter < (1<<(2*`LOG_COEF_PER_CC_BAILEY_NTT-`LOG_N_BAILEY_NTT)); ntt_iter=ntt_iter+1) begin: NTT_ITER_LOOP
         NTT_const_mult #(.STREAM_SIZE(`NTT_DIV_BY_RING), 
-        .PSI(1),//`TWIDDLE_2N is integrated into pointwise multiplication 
-        .OMEGA(modular_pow(`TWIDDLE_2N, `COEF_PER_CLOCK_CYCLE_BAILEY_NTT<<1, `MODULUS)), 
+        .PSI(PSI_SECOND_PASS),//`TWIDDLE_2N is integrated into pointwise multiplication 
+        .OMEGA(OMEGA_SECOND_PASS), 
         .PRECOMP_FACTOR(`PRECOMP_FACTOR),
-        .DIRECTION("FORWARD"),
+        .DIRECTION(DIRECTION),
         .REDUCED_POLYNOMIAL_DEPTH(0)) SECOND_NTT_OF_BAILEY_NTT_instance(
         clk,
         NTT_IN_wire_2[ntt_iter*`NTT_DIV_BY_RING*`MODULUS_WIDTH+:`NTT_DIV_BY_RING*`MODULUS_WIDTH],
@@ -132,7 +140,7 @@ shift_reg_data_valid #(`MULTIPLIER_LATENCY+`REDUCTION_LATENCY) shift_instance_2 
     end
     //assign data_out = NTT_OUT_wire_2;
     //assign data_valid_out = data_ntt_2_valid_out[0];
-    matrix_rectangular_transpose #(.STREAM_SIZE_SQUARE_MATRIX(`NTT_DIV_BY_RING), .direction("FORWARD")) matrix_3(clk, reset, NTT_OUT_wire_2, data_ntt_2_valid_out[0],data_valid_out, data_out);  
+    matrix_rectangular_transpose #(.STREAM_SIZE_SQUARE_MATRIX(`NTT_DIV_BY_RING), .DIRECTION("FORWARD")) matrix_3(clk, reset, NTT_OUT_wire_2, data_ntt_2_valid_out[0],data_valid_out, data_out);  
     //assign data_out = barrel_in_wire_3;
     // assign data_valid_out = data_barrel_3_valid;
 end

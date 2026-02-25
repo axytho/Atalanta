@@ -35,15 +35,18 @@ module butterfly_jewel //Currently 49341 LUTS ad 63805 FFs with this version
 #(parameter TWIDDLE = 0, parameter DIRECTION = "FORWARD", parameter STAGE = 1)
 (
     input clk,
-    input [`MODULUS_WIDTH+(STAGE>0)*3-1:0] input_a, // the two here is from the fact that our mult increases everything by a factor 5.
-    input [`MODULUS_WIDTH+(STAGE>0)*3-1:0] input_b,
+    input [`MODULUS_WIDTH+3-1:0] input_a, // the two here is from the fact that our mult increases everything by a factor 5.
+    input [`MODULUS_WIDTH+3-1:0] input_b, //for gentle-man sande, the actual input is always 14 bits, but increased to 15 bits for consistency
     output [`MODULUS_WIDTH+3-1:0] output_a,
     output [`MODULUS_WIDTH+3-1:0] output_b
     );
-localparam input_width = (STAGE==0) ? `MODULUS_WIDTH : `MODULUS_WIDTH+3;
+localparam input_width = `MODULUS_WIDTH+3;
 localparam output_width = `MODULUS_WIDTH+3;
 
 localparam stage_greater_than_zero = (STAGE>0);
+
+
+
 wire [`MODULUS_WIDTH+3-1:0] mult_input;
 wire [`MODULUS_WIDTH-1:0] mult_output_0;
 wire [`MODULUS_WIDTH-1:0] mult_output_1;
@@ -55,6 +58,9 @@ reg [output_width-1:0] input_a_reg;
 reg [output_width-1:0] output_a_reg;
 reg [output_width-1:0] output_b_reg;
 reg [`MODULUS_WIDTH+2-1:0] full_sum_reg;
+
+//GS specific registers
+reg [`MODULUS_WIDTH+3-1:0] sum_reg, sub_reg;
 function [`MODULUS_WIDTH-1:0] modular_mult;
  input [2*`MODULUS_WIDTH-1:0] input1;
  input [2*`MODULUS_WIDTH-1:0] input2;
@@ -97,88 +103,93 @@ endfunction
     .input_c(mult_output_2),
     .sum(mult_final_sum)
     );
+    wire [`MODULUS_WIDTH+3-1:0] input_a_reductor;
+wire [`MODULUS_WIDTH+1-1:0] mult_final_sum_small_a_red;
+    wire [`MODULUS_WIDTH-1:0] mult_final_sum_raw_a_red;
+    genvar i;
+     for (i=0; i<`MODULUS_WIDTH; i=i+1) begin: LUTS_END
+              LUT6 #(
+             .INIT(LUT_parameter_add_one_bit_no_twiddle(i, `MODULUS_WIDTH))  // Specify LUT Contents
+              ) LUT6_inst (   // LUT general output
+                  .O(mult_final_sum_raw_a_red[i]), // 1-bit LUT6 output
+                 .I0(input_a_reductor[`MODULUS_WIDTH]), // LUT input
+                 .I1(input_a_reductor[`MODULUS_WIDTH+1]), // LUT input
+                 .I2(input_a_reductor[`MODULUS_WIDTH+2]), // LUT input
+                 .I3(1'b0), // LUT input
+                 .I4(1'b0), // LUT input
+                 .I5(input_a_reductor[i])  // LUT input
+              );
+          end
+        wire [`MODULUS_WIDTH-1:0] CO_a_red;
+        wire [8-1:0] last_output_rounded_CO_a_red;
+        wire [8-1:0] last_output_rounded_O_a_red;
+         CARRY8 #(
+          .CARRY_TYPE("SINGLE_CY8")  // 8-bit or dual 4-bit carry (DUAL_CY4, SINGLE_CY8)
+      )
+      CARRY8_inst_0_to_7 (
+          .CO(CO_a_red[7:0]),         // 8-bit output: Carry-out
+          .O(mult_final_sum_small_a_red[7:0]),           // 8-bit output: Carry chain XOR data out
+          .CI(1'b0),         // 1-bit input: Lower Carry-In
+          .CI_TOP(1'b0), // 1-bit input: Upper Carry-In
+          .DI(input_a_reductor[7:0]),         // 8-bit input: Carry-MUX data in
+          .S(mult_final_sum_raw_a_red[7:0])            // 8-bit input: Carry-mux select
+      );
+       CARRY8 #(
+          .CARRY_TYPE("SINGLE_CY8")  // 8-bit or dual 4-bit carry (DUAL_CY4, SINGLE_CY8)
+      )
+        CARRY8_inst_16_to_19 (
+          .CO(last_output_rounded_CO_a_red),         // 8-bit output: Carry-out
+          .O(last_output_rounded_O_a_red),           // 8-bit output: Carry chain XOR data out
+          .CI(CO_a_red[7]),         // 1-bit input: Lower Carry-In
+          .CI_TOP(1'bx), // 1-bit input: Upper Carry-In
+          .DI({4'bx, input_a_reductor[11:8]}),         // 8-bit input: Carry-MUX data in
+          .S({4'bx,mult_final_sum_raw_a_red[11:8]})            // 8-bit input: Carry-mux select
+      );
+        assign mult_final_sum_small_a_red[`MODULUS_WIDTH] = CO_a_red[`MODULUS_WIDTH-1];
+        assign CO_a_red[11:8] = last_output_rounded_CO_a_red[3:0];
+        assign mult_final_sum_small_a_red[11:8] = last_output_rounded_O_a_red[3:0];
+    
+     assign output_a = output_a_reg;
+    assign output_b = output_b_reg;
+generate
+if (DIRECTION=="FORWARD") begin
     always @(posedge clk) begin
+    input_a_reg <= {2'b0, mult_final_sum_small_a_red};
     mult_final_sum_reg <= mult_final_sum;
     output_a_reg <= mult_final_sum_reg + input_a_reg;
     output_b_reg <= `MODULUS*3+input_a_reg-mult_final_sum_reg;
     end
-     
 
+    
+    assign mult_input = input_b;
+    genvar output_a_iterator;
+    for (output_a_iterator=0; output_a_iterator< `MODULUS_WIDTH+3; output_a_iterator=output_a_iterator+1) begin
+        if (output_a_iterator < input_width) begin
+            assign input_a_reductor[output_a_iterator] = input_a[output_a_iterator];
+        end else begin
+            assign input_a_reductor[output_a_iterator] = 1'b0;
+        end
+    end
+    
+    
+end else begin
 
-
-
-generate
-genvar mult_iterator;
-for (mult_iterator=0; mult_iterator< `MODULUS_WIDTH+3; mult_iterator=mult_iterator+1) begin
-    if (mult_iterator < input_width) begin
-        assign mult_input[mult_iterator] = input_b[mult_iterator];
-    end else begin
-        assign mult_input[mult_iterator] = 1'b0;
+    always @(posedge clk) begin
+        output_a_reg <= {2'b0, mult_final_sum_small_a_red};
+        output_b_reg <= mult_final_sum;
+        sum_reg <= input_a + input_b;
+        sub_reg <= `MODULUS*3+input_a-input_b;
+    end
+    assign mult_input = sub_reg;
+    genvar output_a_iterator;
+    for (output_a_iterator=0; output_a_iterator< `MODULUS_WIDTH+3; output_a_iterator=output_a_iterator+1) begin
+        if (output_a_iterator < input_width) begin
+            assign input_a_reductor[output_a_iterator] = sum_reg[output_a_iterator];
+        end else begin
+            assign input_a_reductor[output_a_iterator] = 1'b0;
+        end
     end
 end
-
-wire [`MODULUS_WIDTH+3-1:0] input_a_reductor;
-genvar output_a_iterator;
-for (output_a_iterator=0; output_a_iterator< `MODULUS_WIDTH+3; output_a_iterator=output_a_iterator+1) begin
-    if (output_a_iterator < input_width) begin
-        assign input_a_reductor[output_a_iterator] = input_a[output_a_iterator];
-    end else begin
-        assign input_a_reductor[output_a_iterator] = 1'b0;
-    end
-end
-wire [`MODULUS_WIDTH+1-1:0] mult_final_sum_small_a_red;
-wire [`MODULUS_WIDTH-1:0] mult_final_sum_raw_a_red;
-genvar i;
- for (i=0; i<`MODULUS_WIDTH; i=i+1) begin: LUTS_END
-          LUT6 #(
-         .INIT(LUT_parameter_add_one_bit_no_twiddle(i, `MODULUS_WIDTH))  // Specify LUT Contents
-          ) LUT6_inst (   // LUT general output
-              .O(mult_final_sum_raw_a_red[i]), // 1-bit LUT6 output
-             .I0(input_a_reductor[`MODULUS_WIDTH]), // LUT input
-             .I1(input_a_reductor[`MODULUS_WIDTH+1]), // LUT input
-             .I2(input_a_reductor[`MODULUS_WIDTH+2]), // LUT input
-             .I3(1'b0), // LUT input
-             .I4(1'b0), // LUT input
-             .I5(input_a_reductor[i])  // LUT input
-          );
-      end
-    wire [`MODULUS_WIDTH-1:0] CO_a_red;
-    wire [8-1:0] last_output_rounded_CO_a_red;
-    wire [8-1:0] last_output_rounded_O_a_red;
-     CARRY8 #(
-      .CARRY_TYPE("SINGLE_CY8")  // 8-bit or dual 4-bit carry (DUAL_CY4, SINGLE_CY8)
-  )
-  CARRY8_inst_0_to_7 (
-      .CO(CO_a_red[7:0]),         // 8-bit output: Carry-out
-      .O(mult_final_sum_small_a_red[7:0]),           // 8-bit output: Carry chain XOR data out
-      .CI(1'b0),         // 1-bit input: Lower Carry-In
-      .CI_TOP(1'b0), // 1-bit input: Upper Carry-In
-      .DI(input_a_reductor[7:0]),         // 8-bit input: Carry-MUX data in
-      .S(mult_final_sum_raw_a_red[7:0])            // 8-bit input: Carry-mux select
-  );
-   CARRY8 #(
-      .CARRY_TYPE("SINGLE_CY8")  // 8-bit or dual 4-bit carry (DUAL_CY4, SINGLE_CY8)
-  )
-    CARRY8_inst_16_to_19 (
-      .CO(last_output_rounded_CO_a_red),         // 8-bit output: Carry-out
-      .O(last_output_rounded_O_a_red),           // 8-bit output: Carry chain XOR data out
-      .CI(CO_a_red[7]),         // 1-bit input: Lower Carry-In
-      .CI_TOP(1'bx), // 1-bit input: Upper Carry-In
-      .DI({4'bx, input_a_reductor[11:8]}),         // 8-bit input: Carry-MUX data in
-      .S({4'bx,mult_final_sum_raw_a_red[11:8]})            // 8-bit input: Carry-mux select
-  );
-    assign mult_final_sum_small_a_red[`MODULUS_WIDTH] = CO_a_red[`MODULUS_WIDTH-1];
-    assign CO_a_red[11:8] = last_output_rounded_CO_a_red[3:0];
-    assign mult_final_sum_small_a_red[11:8] = last_output_rounded_O_a_red[3:0];
 endgenerate
-always @(posedge clk) begin
-    input_a_reg <= {2'b0, mult_final_sum_small_a_red};
-end
-assign output_a = output_a_reg;
-assign output_b = output_b_reg;
-
-
-
-
 
 endmodule

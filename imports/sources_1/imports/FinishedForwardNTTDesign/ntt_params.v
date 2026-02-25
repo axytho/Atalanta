@@ -34,12 +34,12 @@
                                             // pow(K, -1, MODULUS)
                                             // with K so that MODULUS = K << SHIFT + 1
                                             // for some SHIFT
-`define INVERSE_N 3316 //pow(N, -1, modulus) = pow(1<<LOG_N,-1,modulus)
 `define REDUCED_POLYNOMIAL_DEPTH 1 // = max(0, LOG_N - log2(gcd(2^LOG_N,MODULUS-1))+1)
 // i.e. the highest power of two that divided modulus -1, figure out what this power is and
 // if this power is LOG_N + 1 or higher, the exponent of the polynomials is 0 and we have
 // fully reduced the polynomials, if power is  LOG_N or smaller, the depth
 // is equal to LOG_N + 1 - power
+`define INVERSE_N 3303 //pow(N, -1, modulus) = pow(1<<LOG_N,-1,modulus)
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -47,7 +47,7 @@
 
 
 //NTT hardware-specific user-defined parameters
-`define COEF_PER_CLOCK_CYCLE       (1 << 8)
+`define COEF_PER_CLOCK_CYCLE       (1 << 7)
 
 //DESIGN DETERMINED parameters (TO BE PARAMETRIZED)
 `define JEWEL_REGISTERS 2 //PERHAPS PARAMETRIZE AS 

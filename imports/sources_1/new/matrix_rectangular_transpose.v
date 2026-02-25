@@ -22,7 +22,7 @@
 `include "parameters.v" 
 `include "ntt_params.v"
 
-module matrix_rectangular_transpose #(parameter STREAM_SIZE_SQUARE_MATRIX = `NTT_DIV_BY_RING, parameter direction = "FORWARD") (
+module matrix_rectangular_transpose #(parameter STREAM_SIZE_SQUARE_MATRIX = `NTT_DIV_BY_RING, parameter DIRECTION = "FORWARD") (
 input clk,
 input reset,
 input [`COEF_PER_CLOCK_CYCLE_BAILEY_NTT*`MODULUS_WIDTH-1:0] data_in,
@@ -35,7 +35,7 @@ wire [`COEF_PER_CLOCK_CYCLE_BAILEY_NTT*`MODULUS_WIDTH-1:0] data_in_matrix_transp
 matrix_transpose #(.STREAM_WIDTH(STREAM_SIZE_SQUARE_MATRIX), .DATA_ELEMENT_WIDTH(`MODULUS_WIDTH*(1<<(2*`LOG_COEF_PER_CC_BAILEY_NTT-`LOG_N_BAILEY_NTT)))) matrix(clk, reset, data_in_matrix_transpose, data_valid,data_valid_out, data_out_matrix_transpose);
 
 generate
-if (direction == "FORWARD") begin
+if (DIRECTION == "FORWARD") begin
 wire [`COEF_PER_CLOCK_CYCLE_BAILEY_NTT*`MODULUS_WIDTH-1:0] data_in_grouped;
 genvar i, j;
 for (i=0; i<`COEF_PER_CLOCK_CYCLE_BAILEY_NTT; i=i+1) begin
