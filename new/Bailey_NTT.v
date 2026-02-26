@@ -27,8 +27,10 @@ module Bailey_NTT #(parameter DIRECTION = "FORWARD") (
     output [`COEF_PER_CLOCK_CYCLE_BAILEY_NTT*`MODULUS_WIDTH-1:0] data_out
     );
     
-    
-localparam PSI_FIRST_PASS = (DIRECTION == "FORWARD") ? modular_pow(`TWIDDLE_2N, `NTT_DIV_BY_RING, `MODULUS) : 1;
+//PSI_FIRST_PASS is adjusted in the inverse twiddle factor case because else there are no negacyclic twiddle factors in the NTT at all
+// this adjustment is not necessary for the forward case, because there the first NTT grows to encompass the whole NTT
+// and it contains the negacyclic twiddle factors anyway.    
+localparam PSI_FIRST_PASS = (DIRECTION == "FORWARD") ? modular_pow(`TWIDDLE_2N, `NTT_DIV_BY_RING, `MODULUS) : ((`LOG_COEF_PER_CC==`LOG_N) ? modular_pow(`INVERSE_TWIDDLE_2N, `NTT_DIV_BY_RING, `MODULUS) : 1);
 localparam OMEGA_FIRST_PASS = (DIRECTION == "FORWARD") ? modular_pow(`TWIDDLE_2N, `NTT_DIV_BY_RING<<1, `MODULUS) : modular_pow(`INVERSE_TWIDDLE_2N, `NTT_DIV_BY_RING<<1, `MODULUS);
 localparam PSI_SECOND_PASS = (DIRECTION == "FORWARD") ? 1 : modular_pow(`INVERSE_TWIDDLE_2N, `COEF_PER_CLOCK_CYCLE_BAILEY_NTT, `MODULUS);
 localparam OMEGA_SECOND_PASS = (DIRECTION == "FORWARD") ? modular_pow(`TWIDDLE_2N, `COEF_PER_CLOCK_CYCLE_BAILEY_NTT<<1, `MODULUS) : modular_pow(`INVERSE_TWIDDLE_2N, `COEF_PER_CLOCK_CYCLE_BAILEY_NTT<<1, `MODULUS);
@@ -80,8 +82,7 @@ NTT_const_mult #(.STREAM_SIZE(`COEF_PER_CLOCK_CYCLE_BAILEY_NTT),
 .PSI(PSI_FIRST_PASS), 
 .OMEGA(OMEGA_FIRST_PASS), 
 .PRECOMP_FACTOR(`PRECOMP_FACTOR),
-.DIRECTION(DIRECTION),
-.REDUCED_POLYNOMIAL_DEPTH(0)) 
+.DIRECTION(DIRECTION)) 
 FIRST_NTT_OF_BAILEY_NTT_instance(clk,matrix_1_data_out,matrix_1_data_valid_out, data_multiplier_valid, NTT_OUT_wire);
    
 
@@ -130,8 +131,8 @@ shift_reg_data_valid #(`MULTIPLIER_LATENCY+`REDUCTION_LATENCY) shift_instance_2 
         .PSI(PSI_SECOND_PASS),//`TWIDDLE_2N is integrated into pointwise multiplication 
         .OMEGA(OMEGA_SECOND_PASS), 
         .PRECOMP_FACTOR(`PRECOMP_FACTOR),
-        .DIRECTION(DIRECTION),
-        .REDUCED_POLYNOMIAL_DEPTH(0)) SECOND_NTT_OF_BAILEY_NTT_instance(
+        .DIRECTION(DIRECTION))
+        SECOND_NTT_OF_BAILEY_NTT_instance(
         clk,
         NTT_IN_wire_2[ntt_iter*`NTT_DIV_BY_RING*`MODULUS_WIDTH+:`NTT_DIV_BY_RING*`MODULUS_WIDTH],
         data_ntt_valid_2,

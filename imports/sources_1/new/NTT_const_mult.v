@@ -24,7 +24,7 @@
 
 `include "parameters.v" 
 `include "ntt_params.v"
-module NTT_const_mult #(parameter STREAM_SIZE = 32, parameter PSI = 1, parameter OMEGA = 1, parameter PRECOMP_FACTOR = 1, parameter DIRECTION="FORWARD", parameter REDUCED_POLYNOMIAL_DEPTH=0) (
+module NTT_const_mult #(parameter STREAM_SIZE = 32, parameter PSI = 1, parameter OMEGA = 1, parameter PRECOMP_FACTOR = 1, parameter DIRECTION="FORWARD") (
     input clk,
     input [STREAM_SIZE*(`MODULUS_WIDTH)-1:0] data_in,
     input data_valid,
@@ -32,10 +32,9 @@ module NTT_const_mult #(parameter STREAM_SIZE = 32, parameter PSI = 1, parameter
     output [STREAM_SIZE*(`MODULUS_WIDTH)-1:0] data_out
     );
 localparam STREAM_DEPTH = ($clog2(STREAM_SIZE));
-localparam STREAM_DEPTH_MODDED = STREAM_DEPTH-REDUCED_POLYNOMIAL_DEPTH;
 
-//localparam REDUCTION_ADDED_WIDTH = ($clog2(STREAM_DEPTH_MODDED));
-//localparam REDUCTION_ADDED_WIDTH_GS = STREAM_DEPTH_MODDED+($clog2(`MODULUS*`SECTIONS))- `MODULUS_WIDTH;
+//localparam REDUCTION_ADDED_WIDTH = ($clog2(STREAM_DEPTH));
+//localparam REDUCTION_ADDED_WIDTH_GS = STREAM_DEPTH+($clog2(`MODULUS*`SECTIONS))- `MODULUS_WIDTH;
 localparam REDUCTION_ADDED_WIDTH = 3; //Used to be a complicated system, now just one extra because butterfly was changed.
 localparam REDUCTION_ADDED_WIDTH_GS = 3;
 localparam STAGE_REDUCTION = `STAGE_REDUCTION;
@@ -45,17 +44,17 @@ wire [`MODULUS_WIDTH-1:0] data_out_bit_reversed [0:STREAM_SIZE-1];
 wire [`MODULUS_WIDTH-1:0] data_out_bit_normal [0:STREAM_SIZE-1];
 
 // DATA_VALID delay
-shift_reg_data_valid #(`JEWEL_REGISTERS*STREAM_DEPTH_MODDED+`TAIL_REDUCTION) shift_instance (clk, data_valid, data_valid_out);
+shift_reg_data_valid #(`JEWEL_REGISTERS*STREAM_DEPTH+`TAIL_REDUCTION) shift_instance (clk, data_valid, data_valid_out);
 
 generate
 if (DIRECTION=="FORWARD") begin
-    wire [`MODULUS_WIDTH+REDUCTION_ADDED_WIDTH-1:0] internal_wiring [0:STREAM_SIZE*(STREAM_DEPTH_MODDED+1)-1];
+    wire [`MODULUS_WIDTH+REDUCTION_ADDED_WIDTH-1:0] internal_wiring [0:STREAM_SIZE*(STREAM_DEPTH+1)-1];
 
     genvar k;
     for(k = 0; k < STREAM_SIZE; k=k+1) begin: BIT_REVERSE_INDEX
         assign data_out_bit_reversed[bit_inverse(k[STREAM_DEPTH-1:0])] = data_out_bit_normal[(k[STREAM_DEPTH-1:0])];
         //TODO: probably the last two elements won't have to be bitreversed, so the bit_reverse function will have to be slightly modified.
-        reduction_tail_ntt #(.ADDED_WIDTH(REDUCTION_ADDED_WIDTH)) reduction(.clk(clk), .data_in(internal_wiring[STREAM_DEPTH_MODDED*STREAM_SIZE + k]), .data_out(data_out_bit_normal[(k[STREAM_DEPTH-1:0])]));
+        
     end
     genvar i;
     for(i = 0; i < STREAM_SIZE; i=i+1) begin: INITIAL
@@ -65,14 +64,14 @@ if (DIRECTION=="FORWARD") begin
     genvar block_number;
     genvar twiddle_exponent;
     genvar reduction_index;
-        for(stage = 0; stage < STREAM_DEPTH_MODDED; stage=stage+1) begin: STAGE_LOOP
+        for(stage = 0; stage < STREAM_DEPTH; stage=stage+1) begin: STAGE_LOOP
             for (block_number = 0; block_number < (1<<stage); block_number=block_number+1) begin: BLOCK_LOOP
                     for (twiddle_exponent = 0; twiddle_exponent  < (STREAM_SIZE>>(stage+1)); twiddle_exponent = twiddle_exponent + 1) begin :  INSIDE_BLOCK
                             butterfly_jewel #(
                             .TWIDDLE(
                             modular_mult(
-                            modular_mult(PRECOMP_FACTOR, modular_pow(PSI,(1<<STREAM_DEPTH_MODDED)>>(stage+1), `MODULUS ) ,`MODULUS),
-                            modular_pow(OMEGA, bit_inverse(block_number)>>(1+REDUCED_POLYNOMIAL_DEPTH), `MODULUS),
+                            modular_mult(PRECOMP_FACTOR, modular_pow(PSI,(1<<STREAM_DEPTH)>>(stage+1), `MODULUS ) ,`MODULUS),
+                            modular_pow(OMEGA, bit_inverse(block_number)>>(1), `MODULUS),
                             `MODULUS) //see python function for more information
                             ),
                             .DIRECTION("FORWARD"),
@@ -96,13 +95,17 @@ end else begin
     genvar k;
     for(k = 0; k < STREAM_SIZE; k=k+1) begin: BIT_REVERSE_INDEX
         assign data_out_bit_reversed[bit_inverse(k[STREAM_DEPTH-1:0])] = data_out_bit_normal[(k[STREAM_DEPTH-1:0])];
-        reduction_tail_ntt #(.ADDED_WIDTH(REDUCTION_ADDED_WIDTH_GS)) reduction(.clk(clk), .data_in(internal_wiring[STREAM_DEPTH*STREAM_SIZE + k]), .data_out(data_out_bit_normal[(k[STREAM_DEPTH-1:0])]));
+        if (`LOG_COEF_PER_CC==`LOG_N) begin
+            tail_reduction_with_division_by_128 reduction_div_by_128(.clk(clk), .data_in(internal_wiring[STREAM_DEPTH*STREAM_SIZE + k]), .data_out(data_out_bit_normal[(k[STREAM_DEPTH-1:0])]));
+        end else begin
+            reduction_tail_ntt #(.ADDED_WIDTH(REDUCTION_ADDED_WIDTH_GS)) reduction(.clk(clk), .data_in(internal_wiring[STREAM_DEPTH*STREAM_SIZE + k]), .data_out(data_out_bit_normal[(k[STREAM_DEPTH-1:0])]));
+        end
     end
     genvar stage;
     genvar block_number;
     genvar twiddle_exponent;
     genvar reduction_index;
-    for(stage = 0; stage < STREAM_DEPTH_MODDED; stage=stage+1) begin: STAGE_LOOP
+    for(stage = 0; stage < STREAM_DEPTH; stage=stage+1) begin: STAGE_LOOP
         for (block_number = 0; block_number < (1<<stage); block_number=block_number+1) begin: BLOCK_LOOP
                 for (twiddle_exponent = 0; twiddle_exponent  < (STREAM_SIZE>>(stage+1)); twiddle_exponent = twiddle_exponent + 1) begin :  INSIDE_BLOCK
                             butterfly_jewel #(
