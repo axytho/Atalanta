@@ -54,6 +54,7 @@ if (DIRECTION=="FORWARD") begin
     for(k = 0; k < STREAM_SIZE; k=k+1) begin: BIT_REVERSE_INDEX
         assign data_out_bit_reversed[bit_inverse(k[STREAM_DEPTH-1:0])] = data_out_bit_normal[(k[STREAM_DEPTH-1:0])];
         //TODO: probably the last two elements won't have to be bitreversed, so the bit_reverse function will have to be slightly modified.
+        reduction_tail_ntt #(.ADDED_WIDTH(REDUCTION_ADDED_WIDTH)) reduction(.clk(clk), .data_in(internal_wiring[STREAM_DEPTH*STREAM_SIZE + k]), .data_out(data_out_bit_normal[(k[STREAM_DEPTH-1:0])]));
         
     end
     genvar i;
@@ -96,7 +97,8 @@ end else begin
     for(k = 0; k < STREAM_SIZE; k=k+1) begin: BIT_REVERSE_INDEX
         assign data_out_bit_reversed[bit_inverse(k[STREAM_DEPTH-1:0])] = data_out_bit_normal[(k[STREAM_DEPTH-1:0])];
         if (`LOG_COEF_PER_CC==`LOG_N) begin
-            tail_reduction_with_division_by_128 reduction_div_by_128(.clk(clk), .data_in(internal_wiring[STREAM_DEPTH*STREAM_SIZE + k]), .data_out(data_out_bit_normal[(k[STREAM_DEPTH-1:0])]));
+            //because of the way K-reduction works, this is functional
+            reduction_tail_ntt #(.ADDED_WIDTH(REDUCTION_ADDED_WIDTH_GS+`REDUCED_POLYNOMIAL_DEPTH)) reduction(.clk(clk), .data_in({internal_wiring[STREAM_DEPTH*STREAM_SIZE + k],{`REDUCED_POLYNOMIAL_DEPTH{1'b0}}}), .data_out(data_out_bit_normal[(k[STREAM_DEPTH-1:0])]));
         end else begin
             reduction_tail_ntt #(.ADDED_WIDTH(REDUCTION_ADDED_WIDTH_GS)) reduction(.clk(clk), .data_in(internal_wiring[STREAM_DEPTH*STREAM_SIZE + k]), .data_out(data_out_bit_normal[(k[STREAM_DEPTH-1:0])]));
         end

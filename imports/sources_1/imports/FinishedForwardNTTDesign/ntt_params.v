@@ -29,9 +29,11 @@
 `define NUMBER_OF_PRECOMPS_NECESSARY   1 //1 if you only do K-reduction in the multiplier halfway,
                                          //3 if you use it for tail reduction as well 
                                          //can be anything depending on number of multipliers 
+                                         //For the full NTT case, find a way to remove K 
+                                         //from the coefficient-wise multiplication 
 `define PRECOMP_FACTOR_NORMAL_MULT   256 // for multiplication outside butterflies
                                             // if K-reduction, should be equal to
-                                            // pow(K, -1, MODULUS)
+                                            // pow(-K, -1, MODULUS)
                                             // with K so that MODULUS = K << SHIFT + 1
                                             // for some SHIFT
 `define REDUCED_POLYNOMIAL_DEPTH 1 // = max(0, LOG_N - log2(gcd(2^LOG_N,MODULUS-1))+1)
@@ -47,7 +49,7 @@
 
 
 //NTT hardware-specific user-defined parameters
-`define COEF_PER_CLOCK_CYCLE       (1 << 5)
+`define COEF_PER_CLOCK_CYCLE       (1 << 8)
 
 //DESIGN DETERMINED parameters (TO BE PARAMETRIZED)
 `define JEWEL_REGISTERS 2 //PERHAPS PARAMETRIZE AS 
@@ -69,13 +71,15 @@
 
 `define NTT_POLYNOMIAL_SIZE (1<<`LOG_N)
 `define LOG_COEF_PER_CC       ($clog2(`COEF_PER_CLOCK_CYCLE))
-`define STAGE_SIZE      `LOG_COEF_PER_CC
+`define STAGE_SIZE      (`LOG_COEF_PER_CC)
 `define NTT_DIV_BY_RING (`NTT_POLYNOMIAL_SIZE>>`LOG_COEF_PER_CC)
 `define COEF_PER_CLOCK_CYCLE_BAILEY_NTT  (`COEF_PER_CLOCK_CYCLE>>`REDUCED_POLYNOMIAL_DEPTH)
 `define LOG_COEF_PER_CC_BAILEY_NTT  ($clog2(`COEF_PER_CLOCK_CYCLE_BAILEY_NTT))
 `define LOG_N_BAILEY_NTT (`LOG_N-`REDUCED_POLYNOMIAL_DEPTH)
+`define MATRIX_TRANSPOSE_LATENCY ((`LOG_N-`LOG_COEF_PER_CC)+1+`NTT_DIV_BY_RING+3+(`LOG_N-`LOG_COEF_PER_CC)+1)
 `define FIRST_NTT_LATENCY (`JEWEL_REGISTERS*`LOG_COEF_PER_CC_BAILEY_NTT+`TAIL_REDUCTION)
-
+`define FORWARD_NTT_1024_LATENCY ((`LOG_COEF_PER_CC == `LOG_N) ?  `FIRST_NTT_LATENCY : (3*`MATRIX_TRANSPOSE_LATENCY+(`JEWEL_REGISTERS*`LOG_N_BAILEY_NTT+2*`TAIL_REDUCTION)+`MULTIPLIER_LATENCY+`REDUCTION_LATENCY))
+`define EXTRA_PRECOMPS_NECESSARY ((`LOG_COEF_PER_CC == `LOG_N) ? 0 : 1) // We'll have to find a way to deal with the situation if it's full.
 
 
 `define BUTTERFLY_SIZE  (`COEF_PER_CLOCK_CYCLE_BAILEY_NTT>>1)

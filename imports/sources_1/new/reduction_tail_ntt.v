@@ -22,7 +22,7 @@
 `include "parameters.v" 
 `include "ntt_params.v"
 module reduction_tail_ntt
-#(parameter ADDED_WIDTH = 5)
+#(parameter ADDED_WIDTH = 4)
 (
     input clk,
     input [(`MODULUS_WIDTH+ADDED_WIDTH)-1:0] data_in,

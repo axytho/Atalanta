@@ -22,9 +22,9 @@
 `include "ntt_params.v"
 
 module mult_mod_tb( );
-
+localparam EXTRA_BIT = 1;
 reg clk, reset;
-reg [`MODULUS_WIDTH*2-1:0] input_a;
+reg [`MODULUS_WIDTH*2+EXTRA_BIT-1:0] input_a;
 wire [`MODULUS_WIDTH-1:0]  output_a;
 
 always #5 clk=~clk;
@@ -40,7 +40,7 @@ function [`MODULUS_WIDTH-1:0] modular_mult;
  end
 endfunction
 
-reduction reduction_0(.clk(clk), .data_in(input_a), .data_out(output_a));
+reduction #(.EXTRA_INPUT_BIT(EXTRA_BIT)) reduction_0(.clk(clk), .data_in(input_a), .data_out(output_a));
 
 
 integer clock_cycle_counter, clock_cycle_counter_4,m;
@@ -49,7 +49,7 @@ integer iterator_a, iterator_b;
 initial begin: TEST_BUTTERFLY
     clk       = 0;
     #10;
-    input_a = (1<<40-1)-(5*`MODULUS);
+    input_a = (1<<25-1)-(5*`MODULUS);
     //input_b = 20'd1;
     iterator_a = 0;
     iterator_b = 0;
@@ -65,12 +65,12 @@ initial begin: CHECK_FOR_OUTPUT
     #70;
     clock_cycle_counter_4 = 0;
     for(clock_cycle_counter_4 = 0; clock_cycle_counter_4 < (1<<(`MODULUS_WIDTH)); clock_cycle_counter_4=clock_cycle_counter_4+1) begin: CLOCK_CYLE_2
-            if(output_a%`MODULUS == modular_mult((input_a-1),3,`MODULUS)) begin
+            if(output_a%`MODULUS == modular_mult((input_a-1),3316,`MODULUS)) begin
 
                 iterator_a = iterator_a+1;
             end
             else begin
-                $display("a: Index-%d -- Calculated:%d, Expected:%d",clock_cycle_counter_4,output_a%`MODULUS,modular_mult((input_a-1),3,`MODULUS));
+                $display("a: Index-%d -- Calculated:%d, Expected:%d",clock_cycle_counter_4,output_a%`MODULUS,modular_mult((input_a-1),3316,`MODULUS));
             end
     
         #10;

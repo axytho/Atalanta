@@ -21,9 +21,10 @@
 
 `include "parameters.v" `include "ntt_params.v"
 module reduction
+#(parameter EXTRA_INPUT_BIT = 0)
 (
     input clk,
-    input [(`MODULUS_WIDTH<<1)-1:0] data_in,
+    input [(`MODULUS_WIDTH<<1)+EXTRA_INPUT_BIT-1:0] data_in,
     output [`MODULUS_WIDTH-1:0] data_out
     );
     
@@ -70,7 +71,7 @@ function [63:0] LUT_parameter;
  integer full_output;
  begin
     for (i=0; i<64; i=i+1) begin
-        full_output = (i << 18) % 3329;
+        full_output = (i << (18+ EXTRA_INPUT_BIT)) % 3329;
         LUT_parameter[i] = full_output[LUT_index];
     end
  end
@@ -83,25 +84,25 @@ wire [11:0] LUT_out;
      .INIT(LUT_parameter(i))  // Specify LUT Contents
       ) LUT6_inst (
              .O(LUT_out[i]),   // LUT general output
-         .I0(data_in[18]), // LUT input
-         .I1(data_in[19]), // LUT input
-         .I2(data_in[20]), // LUT input
-         .I3(data_in[21]), // LUT input
-         .I4(data_in[22]), // LUT input
-         .I5(data_in[23])  // LUT input
+         .I0(data_in[18+EXTRA_INPUT_BIT]), // LUT input
+         .I1(data_in[19+EXTRA_INPUT_BIT]), // LUT input
+         .I2(data_in[20+EXTRA_INPUT_BIT]), // LUT input
+         .I3(data_in[21+EXTRA_INPUT_BIT]), // LUT input
+         .I4(data_in[22+EXTRA_INPUT_BIT]), // LUT input
+         .I5(data_in[23+EXTRA_INPUT_BIT])  // LUT input
       );
     end
 
-wire [18:0] LUT_reduced;
-assign LUT_reduced = data_in[17:0] + LUT_out;
-reg [18:0] LUT_reduced_reg;
+wire [18+EXTRA_INPUT_BIT:0] LUT_reduced;
+assign LUT_reduced = data_in[17+EXTRA_INPUT_BIT:0] + LUT_out;
+reg [18+EXTRA_INPUT_BIT:0] LUT_reduced_reg;
 always @(posedge clk) begin
     LUT_reduced_reg <= LUT_reduced;
 end
 //stage 2
 wire [13:0] Kred_upper;
 wire [10:0] Kred_lower;
-assign Kred_upper =  LUT_reduced_reg[18:8] - {2'b0, LUT_reduced_reg[7:0], 3'b0};
+assign Kred_upper =  LUT_reduced_reg[18+EXTRA_INPUT_BIT:8] - {2'b0, LUT_reduced_reg[7:0], 3'b0};
 assign Kred_lower = {2'b0, LUT_reduced_reg[7:0]} + {LUT_reduced_reg[7:0], 2'b0};
 wire [12:0] Kred_result;
 assign Kred_result = Kred_upper - Kred_lower;
