@@ -34,7 +34,7 @@ internal_wiring_reg <= internal_wiring;
 end
 reg [`LOG_ROUNDS_OF_KECCAK-1:0] round_counter [0:`BURST_SIZE+1-1];
 reg [`LOG_ROUNDS_OF_KECCAK-1:0] counter;
-reg [`LOG_ROUNDS_OF_KECCAK-1:0] counter_out;
+
 
 reg burst_processing;
 always @(posedge clk) begin
@@ -54,7 +54,27 @@ always @(posedge clk) begin
         counter <= counter; //burst are guaranteed, continuous bursts are not
     end
 end
+reg burst_out;
+reg [`LOG_ROUNDS_OF_KECCAK-1:0] counter_out;
+always @(posedge clk) begin
+    if (rst) begin
+        counter_out <=0;
+        burst_out <= 0;
+    end else if ((burst_processing ==1 && counter_out==`ROUNDS_OF_KECCAK-1) || burst_out) begin
+        if (counter_out==`BURST_SIZE-1) begin
+            counter_out<= 0;
+            burst_out <=0;
+        end else begin
+            counter_out<= counter_out+1;
+            burst_out <=1;
+        end
+    end else begin
+        counter_out <= counter_out; 
+        burst_out <=0;
 
+    end
+end
+assign data_valid_out = burst_out;
 
 generate
 genvar i;
