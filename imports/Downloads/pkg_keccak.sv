@@ -35,11 +35,11 @@
 package pkg_keccak;
 
 
-    parameter int NUM_PLANE             = 5;
-    parameter int NUM_SHEET             = 5;
-    parameter int unsigned N            = 64;
-    parameter int unsigned IN_BUF_SIZE  = 64;
-    parameter int unsigned OUT_BUF_SIZE = 64;
+    localparam int NUM_PLANE             = 5;
+    localparam int NUM_SHEET             = 5;
+    localparam int unsigned N            = 64;
+    localparam int unsigned IN_BUF_SIZE  = 64;
+    localparam int unsigned OUT_BUF_SIZE = 64;
 
 
     typedef logic   [N-1:0]             k_lane;
@@ -47,7 +47,7 @@ package pkg_keccak;
     typedef k_plane [NUM_PLANE-1:0]     k_state;
 
 
-    function int ABS (int numberIn);
+    function int ABS (input int numberIn);
         ABS = (numberIn < 0) ? -numberIn : numberIn;
     endfunction
 

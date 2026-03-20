@@ -18,8 +18,12 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-
-
+import pkg_keccak::k_plane;
+import pkg_keccak::k_state;
+import pkg_keccak::N;
+import pkg_keccak::ABS;
+`include "parameters.v" 
+`include "ntt_params.v"
 module keccak_wrapper(
 input [`KECCAK_WIDTH-1:0] keccak_input,
 input   [64-1:0] Round_constant_signal,
@@ -27,11 +31,7 @@ output [`KECCAK_WIDTH-1:0] keccak_output
     );
     
 
-parameter int NUM_PLANE             = 5;
-parameter int NUM_SHEET             = 5;
-parameter int unsigned N            = 64;
-parameter int unsigned IN_BUF_SIZE  = 64;
-parameter int unsigned OUT_BUF_SIZE = 64;
+
 wire k_state Round_in,Round_out;
 generate
 genvar i, j, k, l;

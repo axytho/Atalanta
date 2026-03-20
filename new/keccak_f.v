@@ -23,17 +23,14 @@ module keccak_f(
 
 
 wire [`KECCAK_WIDTH-1:0] internal_wiring [0:`BURST_SIZE+1-1];
-reg [`KECCAK_WIDTH-1:0] internal_wiring [0:`BURST_SIZE+1-1];
-wire   [4:0]          round_number;
-//assign internal_wiring[0] = {data_in, {(`KECCAK_WIDTH-RATE){1'b0}}};
-assign internal_wiring[0] = data_valid ? data_in : internal_wiring_reg[`BURST_SIZE];
-assign data_out = internal_wiring_reg[`BURST_SIZE];
-
-always @(posedge clk) begin
-internal_wiring_reg <= internal_wiring;
-end
-reg [`LOG_ROUNDS_OF_KECCAK-1:0] round_counter [0:`BURST_SIZE+1-1];
+reg [`KECCAK_WIDTH-1:0] internal_wiring_reg [0:`BURST_SIZE-1];
 reg [`LOG_ROUNDS_OF_KECCAK-1:0] counter;
+//assign internal_wiring[0] = {data_in, {(`KECCAK_WIDTH-RATE){1'b0}}};
+assign internal_wiring[0] = data_valid ? data_in : internal_wiring_reg[`BURST_SIZE-1];
+assign data_out = internal_wiring_reg[`BURST_SIZE-1];
+
+
+
 
 
 reg burst_processing;
@@ -60,7 +57,7 @@ always @(posedge clk) begin
     if (rst) begin
         counter_out <=0;
         burst_out <= 0;
-    end else if ((burst_processing ==1 && counter_out==`ROUNDS_OF_KECCAK-1) || burst_out) begin
+    end else if ((burst_processing ==1 && counter==`ROUNDS_OF_KECCAK-1) || burst_out) begin
         if (counter_out==`BURST_SIZE-1) begin
             counter_out<= 0;
             burst_out <=0;
@@ -76,17 +73,22 @@ always @(posedge clk) begin
 end
 assign data_valid_out = burst_out;
 
+
+keccak_wrapper keccak_inst_0 (internal_wiring[0],round_constant_signal_out(round_number_eval(0, counter)) ,internal_wiring[1]);
+
 generate
 genvar i;
-
-
-keccak_round keccak_inst (internal_wiring_reg[i],round_constant_signal_out(round_number_eval(i, counter)) ,internal_wiring[i+1]);
-
-
+for (i=0;i<`BURST_SIZE-1;i=i+1) begin
+always @(posedge clk) begin
+    internal_wiring_reg[i] <= internal_wiring[i+1];
+end
+keccak_wrapper keccak_inst_0 (internal_wiring_reg[i],round_constant_signal_out(round_number_eval(i+1, counter)) ,internal_wiring[i+2]);
+//keccak_triple triple_instance (clk, internal_wiring[i], round_constant_signal_out(round_number_eval(3*i+0, counter)) ,round_constant_signal_out(round_number_eval(3*i+1, counter)), round_constant_signal_out(round_number_eval(3*i+2, counter)) , internal_wiring[i+1]);
+end
 endgenerate
     
 function [63:0] round_constant_signal_out;
-input [`LOG_ROUNDS_OF_KECCAK:0] round_number;
+input [`LOG_ROUNDS_OF_KECCAK-1:0] round_number;
         case(round_number)
             5'b00000 : round_constant_signal_out = 64'h0000_0000_0000_0001;
             5'b00001 : round_constant_signal_out = 64'h0000_0000_0000_8082;
@@ -117,10 +119,10 @@ input [`LOG_ROUNDS_OF_KECCAK:0] round_number;
         endcase
 endfunction 
  
-function [`LOG_ROUNDS_OF_KECCAK:0] round_number_eval;
-input [`LOG_ROUNDS_OF_KECCAK:0] i;
-input [`LOG_ROUNDS_OF_KECCAK:0] counter;
-round_number_eval = i+`BURST_SIZE*(((counter-i+`ROUNDS_OF_KECCAK)%`ROUNDS_OF_KECCAK)/`BURST_SIZE); //correct for streaming by -i
+function [`LOG_ROUNDS_OF_KECCAK-1:0] round_number_eval;
+input [`LOG_ROUNDS_OF_KECCAK-1:0] i;
+input [`LOG_ROUNDS_OF_KECCAK-1:0] counter;
+round_number_eval = (i+`BURST_SIZE*(((counter-i+`ROUNDS_OF_KECCAK)%`ROUNDS_OF_KECCAK)/`BURST_SIZE)); //correct for streaming by -i
 endfunction 
 
 endmodule
