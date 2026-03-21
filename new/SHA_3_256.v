@@ -20,7 +20,7 @@ module SHA_3_256(
     );
  
  wire [`SHA_256_DATA_RATE-1:0] padded_input;
-assign padded_input = {1'b1,{(`SHA_256_DATA_RATE-4){1'b0}},3'b110,data_in};
+assign padded_input = {1'b1,{(`SHA_256_DATA_RATE-4 -`INPUT_WIDTH_CLUSTER_PK ){1'b0}},3'b110,data_in};
 wire [`KECCAK_WIDTH-1:0] keccak_input;
 assign keccak_input = {{(`KECCAK_WIDTH-`SHA_256_DATA_RATE){1'b0}},padded_input};
 wire [`KECCAK_WIDTH-1:0] keccak_output;

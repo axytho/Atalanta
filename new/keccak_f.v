@@ -38,7 +38,7 @@ always @(posedge clk) begin
     if (rst) begin
         counter <=0;
         burst_processing <= 0;
-    end else if (data_valid || burst_processing ==1) begin
+    end else if (data_valid || burst_processing) begin
         if (counter==`ROUNDS_OF_KECCAK-1) begin
             counter<= 0;
             burst_processing <=0;
@@ -58,7 +58,7 @@ always @(posedge clk) begin
         counter_out <=0;
         burst_out <= 0;
     end else if ((burst_processing ==1 && counter==`ROUNDS_OF_KECCAK-1) || burst_out) begin
-        if (counter_out==`BURST_SIZE-1) begin
+        if (counter_out==`BURST_SIZE) begin
             counter_out<= 0;
             burst_out <=0;
         end else begin
@@ -75,7 +75,9 @@ assign data_valid_out = burst_out;
 
 
 keccak_wrapper keccak_inst_0 (internal_wiring[0],round_constant_signal_out(round_number_eval(0, counter)) ,internal_wiring[1]);
-
+always @(posedge clk) begin
+    internal_wiring_reg[`BURST_SIZE-1] <=internal_wiring[`BURST_SIZE];
+end
 generate
 genvar i;
 for (i=0;i<`BURST_SIZE-1;i=i+1) begin
