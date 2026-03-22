@@ -84,7 +84,8 @@
 `define SHA_256_DATA_RATE 1088
 `define SHA_512_DATA_RATE 576
 
- 
+ `define SHA_256_OUTPUT 256
+`define SHA_512_OUTPUT 512
 
 
 // TOTAL PARAMS

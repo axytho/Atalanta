@@ -20,10 +20,35 @@ module keccak_f(
     );
 
 
-
-
+generate
+genvar i;
 wire [`KECCAK_WIDTH-1:0] internal_wiring [0:`BURST_SIZE+1-1];
 reg [`KECCAK_WIDTH-1:0] internal_wiring_reg [0:`BURST_SIZE-1];
+
+if (`COEF_PER_CLOCK_CYCLE == `NTT_POLYNOMIAL_SIZE) begin
+///////////////////////////////////////////////////////////////////////////////////
+// SPECIAL CASE IF FULLY UNROLLED
+///////////////////////////////////////////////////////////////////////////////////
+keccak_wrapper keccak_inst_0 (internal_wiring[0],round_constant_signal_out(0) ,internal_wiring[1]);
+shift_reg_data_valid #(`ROUNDS_OF_KECCAK) keccak_instance (clk, data_valid, data_valid_out);   
+assign data_out = internal_wiring_reg[`BURST_SIZE-1];
+assign internal_wiring[0] = data_in;
+
+for (i=0;i<`BURST_SIZE-1;i=i+1) begin
+always @(posedge clk) begin
+    internal_wiring_reg[i] <= internal_wiring[i+1];
+end
+keccak_wrapper keccak_inst_0 (internal_wiring_reg[i],round_constant_signal_out(i+1) ,internal_wiring[i+2]);
+always @(posedge clk) begin
+    internal_wiring_reg[`BURST_SIZE-1] <=internal_wiring[`BURST_SIZE];
+end
+end
+
+end else begin
+///////////////////////////////////////////////////////////////////////////////////
+// DEFAULT CASE
+///////////////////////////////////////////////////////////////////////////////////
+
 reg [`LOG_ROUNDS_OF_KECCAK-1:0] counter;
 //assign internal_wiring[0] = {data_in, {(`KECCAK_WIDTH-RATE){1'b0}}};
 assign internal_wiring[0] = data_valid ? data_in : internal_wiring_reg[`BURST_SIZE-1];
@@ -78,17 +103,20 @@ keccak_wrapper keccak_inst_0 (internal_wiring[0],round_constant_signal_out(round
 always @(posedge clk) begin
     internal_wiring_reg[`BURST_SIZE-1] <=internal_wiring[`BURST_SIZE];
 end
-generate
-genvar i;
+
 for (i=0;i<`BURST_SIZE-1;i=i+1) begin
 always @(posedge clk) begin
     internal_wiring_reg[i] <= internal_wiring[i+1];
 end
 keccak_wrapper keccak_inst_0 (internal_wiring_reg[i],round_constant_signal_out(round_number_eval(i+1, counter)) ,internal_wiring[i+2]);
-//keccak_triple triple_instance (clk, internal_wiring[i], round_constant_signal_out(round_number_eval(3*i+0, counter)) ,round_constant_signal_out(round_number_eval(3*i+1, counter)), round_constant_signal_out(round_number_eval(3*i+2, counter)) , internal_wiring[i+1]);
 end
+
+
+end //END OF DEFAULT CASE
 endgenerate
     
+    
+//functions    
 function [63:0] round_constant_signal_out;
 input [`LOG_ROUNDS_OF_KECCAK-1:0] round_number;
         case(round_number)
