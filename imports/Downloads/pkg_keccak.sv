@@ -1,3 +1,4 @@
+`timescale 1ns / 1ps
 // ============================================================================
 // Project:   Keccak Verilog Module
 // Author:    Josh Moles

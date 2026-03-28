@@ -1,4 +1,4 @@
-
+`timescale 1ns / 1ps
 //  Xilinx UltraRAM Simple Dual Port.  This code implements 
 //  a parameterizable UltraRAM block 1 Read and 1 write. 
 //  when addra == addrb, old data will show at doutb 

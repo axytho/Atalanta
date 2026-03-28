@@ -24,6 +24,6 @@ assign padded_input = {1'b1,{(`SHA_512_DATA_RATE-4 -(`INPUT_WIDTH_CLUSTER_MESSAG
 wire [`KECCAK_WIDTH-1:0] keccak_input;
 assign keccak_input = {{(`KECCAK_WIDTH-`SHA_512_DATA_RATE){1'b0}},padded_input};
 wire [`KECCAK_WIDTH-1:0] keccak_output;
-keccak_f keccak_f_SHA_512_block(clk, rst, keccak_input, data_valid, data_valid_out, keccak_output);
+keccak_f #(.BURST_SIZE(`BURST_SIZE_DIV_BY_3)) keccak_f_SHA_512_block(clk, rst, keccak_input, data_valid, data_valid_out, keccak_output);
 assign data_out = keccak_output[`SHA_512_OUTPUT-1:0];
 endmodule

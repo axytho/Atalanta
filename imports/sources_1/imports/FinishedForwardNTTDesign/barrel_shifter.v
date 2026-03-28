@@ -1,3 +1,4 @@
+`timescale 1ns / 1ps
 `include "parameters.v" 
 `include "ntt_params.v"
 
