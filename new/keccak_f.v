@@ -9,7 +9,7 @@
 
 `include "parameters.v" 
 `include "ntt_params.v"
-module keccak_f #(BURST_SIZE=`BURST_SIZE) (
+module keccak_f #(parameter BURST_SIZE=`BURST_SIZE) (
 //module keccak_f #(parameter RATE=1088)(
     input clk,
     input rst,
