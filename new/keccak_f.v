@@ -76,7 +76,7 @@ always @(posedge clk) begin
         counter <= counter; //burst are guaranteed, continuous bursts are not
     end
 end
-reg burst_out;
+reg burst_out = 0;
 reg [`LOG_ROUNDS_OF_KECCAK-1:0] counter_out;
 always @(posedge clk) begin
     if (rst) begin

@@ -34,7 +34,7 @@ module Burst_into_stream #(parameter INPUT_WIDTH = 1024, parameter OUTPUT_WIDTH 
 // DATA_VALID delay
 
 // assert output_burst = (BURST_SIZE*INPUT_WIDTH/OUTPUT_WIDTH);
-reg [$clog2(OUTPUT_BURST)-1:0] output_counter;
+reg [$clog2(OUTPUT_BURST)-1:0] output_counter = 0;
 reg [$clog2(BURST_SIZE)-1:0] input_counter;
 always @(posedge clk) begin
     if (rst) begin
@@ -48,7 +48,9 @@ always @(posedge clk) begin
         input_counter <= input_counter;
     end
 end
-reg data_valid_reg, data_valid_out_reg, valid_rising_edge_reg;
+reg data_valid_out_reg = 0; //to ensure doesn't mess with simulation
+reg valid_rising_edge_reg = 0;
+reg data_valid_reg = 0;
 wire data_valid_out_until_counter;
 reg [INPUT_WIDTH-1:0] data_valid_SLR [0:BURST_SIZE-1];
 reg [OUTPUT_WIDTH-1:0] data_out_reg;
