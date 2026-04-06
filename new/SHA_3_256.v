@@ -25,6 +25,8 @@ assign padded_input = {1'b1,{(`SHA_256_DATA_RATE-4 -(`INPUT_WIDTH_CLUSTER_PK%`SH
 
 
 wire [`KECCAK_WIDTH-1:0] keccak_input [0:(`INPUT_WIDTH_CLUSTER_PK/`SHA_256_DATA_RATE)+1+1-1];//+1 because 9, +1 because interwire
+wire [`SHA_256_DATA_RATE-1:0] xor_output [0:(`INPUT_WIDTH_CLUSTER_PK/`SHA_256_DATA_RATE)+1+1-1];//+1 because 9, +1 because interwire
+
 wire [0:(`INPUT_WIDTH_CLUSTER_PK/`SHA_256_DATA_RATE)+1+1-1]  keccak_valid ;
 assign keccak_valid[0] = data_valid;
 //assign keccak_input[0] = {{(`KECCAK_WIDTH-`SHA_256_DATA_RATE){1'b0}},padded_input[`SHA_256_DATA_RATE-1:0]};
@@ -52,11 +54,12 @@ generate
 
     for (i=0; i<(`INPUT_WIDTH_CLUSTER_PK/`SHA_256_DATA_RATE)+1; i=i+1) begin
         assign modified_input[i] = padded_input[`SHA_256_DATA_RATE*i+:`SHA_256_DATA_RATE];
+        assign xor_output[i] = modified_input[i*((`INPUT_WIDTH_CLUSTER_PK/`SHA_256_DATA_RATE)+1)+i]^keccak_input[i][`SHA_256_DATA_RATE-1:0];
         
         keccak_f #(.BURST_SIZE(`BURST_SIZE_DIV_BY_3)) keccak_f_SHA_256_block(
         clk, 
         rst,
-        {keccak_input[i][`KECCAK_WIDTH-1:`SHA_256_DATA_RATE] ,modified_input[i*((`INPUT_WIDTH_CLUSTER_PK/`SHA_256_DATA_RATE)+1)+i]^keccak_input[i][`SHA_256_DATA_RATE-1:0] },
+        {keccak_input[i][`KECCAK_WIDTH-1:`SHA_256_DATA_RATE] , xor_output[i]},
          keccak_valid[i], 
          keccak_valid[i+1], 
          keccak_input[i+1]);
