@@ -43,8 +43,8 @@ wire [`INPUT_WIDTH_CLUSTER_MESSAGE-1:0] message_in_512;
 shift_reg_width #(.shift(`ROUNDS_OF_KECCAK), .width(`INPUT_WIDTH_CLUSTER_MESSAGE)) shift_0 (clk, message, message_in_512);
 wire [`SHA_512_OUTPUT/2-1:0] K, r;  
 
-SHA_3_512 SHA_3_512_instance (clk, internal_reset, {message_in_512,pk_hash}, data_valid_out_SHA_256,data_valid_out_SHA_512, {K, r});
-wire stream_valid_K, stream_valid_r;
+SHA_3_512 SHA_3_512_instance (clk, internal_reset, {pk_hash, message_in_512}, data_valid_out_SHA_256,data_valid_out_SHA_512, {r, K});
+wire stream_valid_K, stream_valid_t;
 wire [`K_WIDTH-1:0] K_stream;  
 Burst_into_stream #(
 .INPUT_WIDTH((`SHA_512_OUTPUT/2)), 
@@ -52,10 +52,139 @@ Burst_into_stream #(
 .BURST_SIZE(`BURST_SIZE_DIV_BY_3), 
 .OUTPUT_BURST((`BURST_SIZE_DIV_BY_3<<(`LOG_N-`LOG_COEF_PER_CC))), 
 .CYCLES_PER_OUTPUT_LOG((`LOG_N-`LOG_COEF_PER_CC))
-) Burst
+) Burst_K
 (clk, internal_reset, K, data_valid_out_SHA_512, stream_valid_K, K_stream);
 
+
+wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] t_stream;  
+Burst_into_stream #(
+.INPUT_WIDTH((`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE*`SMALL_K)), 
+.OUTPUT_WIDTH((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)), 
+.BURST_SIZE(`BURST_SIZE_DIV_BY_3), 
+.OUTPUT_BURST(((`BURST_SIZE_DIV_BY_3*`SMALL_K)<<(`LOG_N-`LOG_COEF_PER_CC))), //ends up being 24, which makes sense
+.CYCLES_PER_OUTPUT_LOG((`LOG_N-`LOG_COEF_PER_CC))
+) Burst_ciphertext
+(clk, internal_reset, ciphertext[`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE*`SMALL_K-1:0], data_valid, stream_valid_t, t_stream);
+
+
+wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE*`SMALL_K)-1:0] t_stream_delayed;  
+reg [`SHAKE_COUNTER_SIZE-1:0] input_counter;
+always @(posedge clk) begin
+    if (internal_reset) begin
+        input_counter <= 0;
+    end else if (data_valid_out_SHA_512) begin
+        if (input_counter == `SMALL_K-1)
+            input_counter <= 0; 
+        else
+            input_counter <= input_counter + 1;    
+    end else begin
+        input_counter <= input_counter;
+    end
+end
+wire [`SHAKE_COUNTER_SIZE-1:0] error_counter;
+
+wire Y_gen_valid;
+wire [`OUTPUT_WIDTH_CLUSTER_SHAKE_256-1:0] SHAKE_256_out;
+SHAKE_256 #(.BURST_SIZE(`BURST_SIZE)) Y_generation (clk, internal_reset, {input_counter, r}, data_valid_out_SHA_512, Y_gen_valid,SHAKE_256_out);
+
+wire [`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE-1:0] sampled_Y_burst;
+generate
+genvar y;
+    for (y=0; y<`NTT_POLYNOMIAL_SIZE; y=y+1) begin
+        SamplePolyCBD Sample_Y (clk, SHAKE_256_out[y*(`SAMPLE_INPUT_WIDTH)+:`SAMPLE_INPUT_WIDTH], sampled_Y_burst[y*(`MODULUS_WIDTH)+:`MODULUS_WIDTH]);
+    end
+endgenerate
+
+reg temp_y_data_valid_buffer;
+always @(posedge clk) begin
+    temp_y_data_valid_buffer <= Y_gen_valid;
+end
+
+wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] Y_stream;  
+Burst_into_stream #(
+.INPUT_WIDTH((`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE)), 
+.OUTPUT_WIDTH((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)), 
+.BURST_SIZE(`BURST_SIZE), 
+.OUTPUT_BURST((`BURST_SIZE<<(`LOG_N-`LOG_COEF_PER_CC))), //ends up being 24, which makes sense, has to match t
+.CYCLES_PER_OUTPUT_LOG((`LOG_N-`LOG_COEF_PER_CC))
+) Burst_Y
+(clk, internal_reset, sampled_Y_burst, temp_y_data_valid_buffer, stream_valid_y, Y_stream);
+
+
+shift_reg_width #(.shift(`T_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE*`SMALL_K))) shift_t(clk, t_stream, t_stream_delayed);
 shift_reg_width #(.shift(`TOTAL_LATENCY_ENCRYPTION), .width(`K_WIDTH)) shift_1(clk, K_stream, K_output);
 shift_reg_data_valid #(`TOTAL_LATENCY_ENCRYPTION) shift_instance_2 (clk, stream_valid_K, data_valid_out);  
+
+wire y_valid_out;
+wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] NTT_y_OUT_wire, poly_out,ty_out, ty_half_out;
+NTT_incomplete NTT_128_instance(clk,reset, Y_stream,stream_valid_y, y_valid_out , NTT_y_OUT_wire);
+wire [0:`COEF_PER_CLOCK_CYCLE-1] data_valid_out_coef;
+wire [0:`COEF_PER_CLOCK_CYCLE-1] ty_valid_out_coef;
+wire [(`MODULUS_WIDTH)-1:0] twiddles [0:`COEF_PER_CLOCK_CYCLE-1]; 
+
+
+shift_reg_data_valid #(`FORWARD_NTT_1024_LATENCY-1) shift_instance_3 (clk, stream_valid_y, data_valid_twiddle);  
+generate
+genvar i;
+for (i=0; i<`COEF_PER_CLOCK_CYCLE>>`REDUCED_POLYNOMIAL_DEPTH; i=i+1) begin
+twiddle_generation_coefficient #(.TWIDDLE_INDEX(i)) twiddle_gen_here (clk, reset, data_valid_twiddle, twiddles[i] );
+coefficient_multiplication coef_mult (clk, twiddles[i], NTT_y_OUT_wire[2*i*`MODULUS_WIDTH+:2*`MODULUS_WIDTH], t_stream_delayed[2*i*`MODULUS_WIDTH+:2*`MODULUS_WIDTH],y_valid_out, data_valid_out_coef[i], poly_out[2*i*`MODULUS_WIDTH+:2*`MODULUS_WIDTH]);
+
+end  
+genvar coef;
+for (coef=0; coef<`COEF_PER_CLOCK_CYCLE; coef=coef+1) begin
+three_to_one_accumulator three_to_one_accumulator_inst (clk, poly_out[coef*`MODULUS_WIDTH+:`MODULUS_WIDTH], data_valid_out_coef[i],ty_valid_out_coef[i], ty_out[coef*`MODULUS_WIDTH+:`MODULUS_WIDTH]);
+
+end
+endgenerate
+wire ty_valid, ty_half_valid;
+shift_reg_data_valid #((`ACCUMULATOR_LATENCY+`MULTIPLIER_LATENCY+`REDUCTION_LATENCY)) shift_instance_4 (clk, y_valid_out, ty_valid);  
+
+
+wire e2_valid;
+wire [`OUTPUT_WIDTH_CLUSTER_SHAKE_256-1:0] e2_burst_out;
+SHAKE_256 #(.BURST_SIZE(`BURST_SIZE_DIV_BY_3)) e2_generation (clk, internal_reset, {8'd6, r}, data_valid_out_SHA_512, e2_valid,e2_burst_out);
+wire [`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE-1:0] sampled_e2_burst;
+generate
+genvar e2;
+    for (e2=0; e2<`NTT_POLYNOMIAL_SIZE; e2=e2+1) begin
+        SamplePolyCBD Sample_e2 (clk, SHAKE_256_out[e2*(`SAMPLE_INPUT_WIDTH)+:`SAMPLE_INPUT_WIDTH], sampled_e2_burst[e2*(`MODULUS_WIDTH)+:`MODULUS_WIDTH]);
+    end
+endgenerate
+
+reg temp_e2_data_valid_buffer;
+always @(posedge clk) begin
+    temp_e2_data_valid_buffer <= e2_valid;
+end
+wire stream_valid_e2;
+wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] e2_stream;  
+Burst_into_stream #(
+.INPUT_WIDTH((`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE)), 
+.OUTPUT_WIDTH((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)), 
+.BURST_SIZE(`BURST_SIZE_DIV_BY_3), 
+.OUTPUT_BURST((`BURST_SIZE_DIV_BY_3<<(`LOG_N-`LOG_COEF_PER_CC))), 
+.CYCLES_PER_OUTPUT_LOG((`LOG_N-`LOG_COEF_PER_CC))
+) Burst_e2
+(clk, internal_reset, sampled_e2_burst, temp_e2_data_valid_buffer, stream_valid_e2, e2_stream);
+
+wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] e2_stream_delayed;  
+
+shift_reg_width #(.shift(`E2_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2(clk, e2_stream, e2_stream_delayed);
+
+wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] INTT_ty_out;
+wire INTT_ty_out_valid;
+
+Burst_into_stream #(
+.INPUT_WIDTH((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)), 
+.OUTPUT_WIDTH((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE>>1)), 
+.BURST_SIZE(1), 
+.OUTPUT_BURST((`BURST_SIZE_DIV_BY_3<<(`LOG_N-`LOG_COEF_PER_CC))), 
+.CYCLES_PER_OUTPUT_LOG((`LOG_N-`LOG_COEF_PER_CC))
+) Burst_e2
+(clk, internal_reset, ty_out, temp_e2_data_valid_buffer, stream_valid_e2, ty_half_out);
+
+NTT_incomplete #(.DIRECTION("INVERSE")) INTT_256 (clk,reset, ty_half_out,ty_half_valid, INTT_ty_out_valid, INTT_ty_out);
+
+
 
 endmodule
