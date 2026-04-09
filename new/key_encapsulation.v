@@ -36,6 +36,9 @@ output data_valid_out
 wire internal_reset;
 assign internal_reset = rst;    
 wire data_valid_out_SHA_256, data_valid_out_SHA_512;    
+wire data_valid_out_SHA_512_spaced;
+
+
 wire [`SHA_256_OUTPUT-1:0] pk_hash;    
 SHA_3_256 SHA_3_256_instance (clk, internal_reset, public_key, data_valid,data_valid_out_SHA_256, pk_hash);
 
@@ -55,9 +58,9 @@ Burst_into_stream #(
 
 shift_reg_width #(.shift(`MESSAGE_LATENCY-`BURST_LATENCY), .width((`INPUT_WIDTH_CLUSTER_MESSAGE>>(`LOG_N-`LOG_COEF_PER_CC)))) shift_mu (clk, message_stream, message_for_mu);
 
-wire [`SHA_512_OUTPUT/2-1:0] K, r;  
+wire [`SHA_512_OUTPUT/2-1:0] K, r, r_burst;  
 
-SHA_3_512 SHA_3_512_instance (clk, internal_reset, {pk_hash, message_in_512}, data_valid_out_SHA_256,data_valid_out_SHA_512, {r, K});
+SHA_3_512 SHA_3_512_instance (clk, internal_reset, {pk_hash, message_in_512}, data_valid_out_SHA_256,data_valid_out_SHA_512, {r_burst, K});
 wire stream_valid_K, stream_valid_t;
 wire [`K_WIDTH-1:0] K_stream;  
 Burst_into_stream #(
@@ -81,12 +84,20 @@ Burst_into_stream #(
 (clk, internal_reset, public_key[`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE*`SMALL_K-1:0], data_valid, stream_valid_t, t_stream);
 
 
+burst_spacing #(
+.INPUT_WIDTH(`SHA_512_OUTPUT/2),
+.BURST_SIZE(`BURST_SIZE_DIV_BY_3),
+.SPACING(`SMALL_K)
+) space_burst
+(clk, internal_reset, r_burst,data_valid_out_SHA_512, data_valid_out_SHA_512_spaced, r);
+
 wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] t_stream_delayed;  
 reg [`SHAKE_COUNTER_SIZE-1:0] input_counter;
+//TODO: CHANGE TO PULSED!!!!
 always @(posedge clk) begin
     if (internal_reset) begin
         input_counter <= 0;
-    end else if (data_valid_out_SHA_512 || ~(input_counter==0)) begin
+    end else if (data_valid_out_SHA_512_spaced || ~(input_counter==0)) begin
         if (input_counter == `SMALL_K-1) begin
             input_counter <= 0; 
         end else begin
@@ -100,9 +111,9 @@ reg [`SHA_512_OUTPUT/2-1:0] r_cap;
 reg data_valid_out_SHA_512_reg;
 reg [`SHAKE_COUNTER_SIZE-1:0] input_counter_reg;
 always @(posedge clk) begin
-    data_valid_out_SHA_512_reg <= (data_valid_out_SHA_512 || ~(input_counter==0));
+    data_valid_out_SHA_512_reg <= (data_valid_out_SHA_512_spaced || ~(input_counter==0));
     input_counter_reg <= input_counter;
-    if (data_valid_out_SHA_512) begin
+    if (data_valid_out_SHA_512_spaced) begin
         r_cap <=r;
     end else begin
         r_cap <=r_cap;
@@ -127,6 +138,7 @@ always @(posedge clk) begin
 end
 
 wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] Y_stream;  
+wire stream_valid_y;
 Burst_into_stream #(
 .INPUT_WIDTH((`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE)), 
 .OUTPUT_WIDTH((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)), 
@@ -136,8 +148,18 @@ Burst_into_stream #(
 ) Burst_Y
 (clk, internal_reset, sampled_Y_burst, temp_y_data_valid_buffer, stream_valid_y, Y_stream);
 
+wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] t_stream_0, t_stream_1, t_stream_2;  
 
-shift_reg_width #(.shift(`T_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_t(clk, t_stream, t_stream_delayed);
+//////////////////////////////////////////////////////////////// LATENCY BLOCK BECAUSE SIMULATION STRUGGLES
+shift_reg_width #(.shift(4*`ROUNDS_OF_KECCAK), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_t_0(clk, t_stream, t_stream_0);
+shift_reg_width #(.shift(4*`ROUNDS_OF_KECCAK), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_t_1(clk, t_stream_0, t_stream_1);
+shift_reg_width #(.shift(3*`ROUNDS_OF_KECCAK+`BURST_LATENCY+`CAPTURE_R_LATENCY+`SAMPLE_POLY_CBD_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_t_2(clk, t_stream_1, t_stream_2);
+shift_reg_width #(.shift(`FORWARD_NTT_1024_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_t_3(clk, t_stream_2, t_stream_delayed);
+
+////////////////////////////////////////////////////////////////
+
+
+
 shift_reg_width #(.shift(`TOTAL_LATENCY_ENCRYPTION), .width(`K_WIDTH)) shift_1(clk, K_stream, K_output);
 shift_reg_data_valid #(`TOTAL_LATENCY_ENCRYPTION) shift_instance_2 (clk, stream_valid_K, data_valid_out);  
 
@@ -146,8 +168,8 @@ wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] NTT_y_OUT_wire, poly_out,ty_ou
 NTT_incomplete NTT_128_instance(clk,internal_reset, Y_stream,stream_valid_y, y_valid_out , NTT_y_OUT_wire);
 wire [0:(`COEF_PER_CLOCK_CYCLE>>`REDUCED_POLYNOMIAL_DEPTH)-1] data_valid_out_coef;
 wire [0:`COEF_PER_CLOCK_CYCLE-1] ty_valid_out_coef;
-wire [(`MODULUS_WIDTH)-1:0] twiddles [0:`COEF_PER_CLOCK_CYCLE-1]; 
-
+wire [(`MODULUS_WIDTH)-1:0] twiddles [0:(`COEF_PER_CLOCK_CYCLE>>`REDUCED_POLYNOMIAL_DEPTH)-1]; 
+wire data_valid_twiddle;
 
 shift_reg_data_valid #(`FORWARD_NTT_1024_LATENCY-1) shift_instance_3 (clk, stream_valid_y, data_valid_twiddle);  
 generate
@@ -169,7 +191,7 @@ shift_reg_data_valid #((`ACCUMULATOR_LATENCY+`MULTIPLIER_LATENCY+`REDUCTION_LATE
 
 wire e2_valid;
 wire [`OUTPUT_WIDTH_CLUSTER_SHAKE_256-1:0] e2_burst_out;
-SHAKE_256 #(.BURST_SIZE(`BURST_SIZE_DIV_BY_3)) e2_generation (clk, internal_reset, {8'd6, r}, data_valid_out_SHA_512, e2_valid,e2_burst_out);
+SHAKE_256 #(.BURST_SIZE(`BURST_SIZE_DIV_BY_3)) e2_generation (clk, internal_reset, {8'd6, r}, data_valid_out_SHA_512_spaced, e2_valid,e2_burst_out);
 wire [`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE-1:0] sampled_e2_burst;
 generate
 genvar e2;
