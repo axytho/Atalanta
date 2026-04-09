@@ -86,7 +86,7 @@ reg [`SHAKE_COUNTER_SIZE-1:0] input_counter;
 always @(posedge clk) begin
     if (internal_reset) begin
         input_counter <= 0;
-    end else if (data_valid_out_SHA_512) begin
+    end else if (data_valid_out_SHA_512 || ~(input_counter==0)) begin
         if (input_counter == `SMALL_K-1) begin
             input_counter <= 0; 
         end else begin
