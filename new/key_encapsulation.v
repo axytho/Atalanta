@@ -177,12 +177,12 @@ coefficient_multiplication coef_mult (clk, twiddles[i], NTT_y_OUT_wire[2*i*`MODU
 end  
 genvar coef;
 for (coef=0; coef<`COEF_PER_CLOCK_CYCLE; coef=coef+1) begin
-three_to_one_accumulator three_to_one_accumulator_inst (clk, internal_reset, poly_out[coef*`MODULUS_WIDTH+:`MODULUS_WIDTH], data_valid_out_coef[coef/2],ty_valid_out_coef[coef], ty_out[coef*`MODULUS_WIDTH+:`MODULUS_WIDTH]);
+three_to_one_accumulator three_to_one_accumulator_inst (clk, internal_reset, poly_out[coef*`MODULUS_WIDTH+:`MODULUS_WIDTH], data_valid_out_coef[(coef>>`REDUCED_POLYNOMIAL_DEPTH)],ty_valid_out_coef[coef], ty_out[coef*`MODULUS_WIDTH+:`MODULUS_WIDTH]);
 
 end
 endgenerate
 wire ty_valid, ty_half_valid;
-shift_reg_data_valid #((`ACCUMULATOR_LATENCY+`MULTIPLIER_LATENCY+`REDUCTION_LATENCY)) shift_instance_4 (clk, y_valid_out, ty_valid);  
+shift_reg_data_valid #((`ACCUMULATOR_LATENCY+`MULTIPLIER_LATENCY+`REDUCTION_LATENCY+`MULTIPLIER_LATENCY+1+`REDUCTION_LATENCY)) shift_instance_4 (clk, y_valid_out, ty_valid);  
 
 
 wire e2_valid;
@@ -192,7 +192,7 @@ wire [`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE-1:0] sampled_e2_burst;
 generate
 genvar e2;
     for (e2=0; e2<`NTT_POLYNOMIAL_SIZE; e2=e2+1) begin
-        SamplePolyCBD Sample_e2 (clk, SHAKE_256_out[e2*(`SAMPLE_INPUT_WIDTH)+:`SAMPLE_INPUT_WIDTH], sampled_e2_burst[e2*(`MODULUS_WIDTH)+:`MODULUS_WIDTH]);
+        SamplePolyCBD Sample_e2 (clk, e2_burst_out[e2*(`SAMPLE_INPUT_WIDTH)+:`SAMPLE_INPUT_WIDTH], sampled_e2_burst[e2*(`MODULUS_WIDTH)+:`MODULUS_WIDTH]);
     end
 endgenerate
 
@@ -210,13 +210,20 @@ Burst_into_stream #(
 ) Burst_e2
 (clk, internal_reset, sampled_e2_burst, temp_e2_data_valid_buffer, stream_valid_e2, e2_stream);
 
-wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] e2_stream_delayed;  
+wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] e2_stream_0,e2_stream_1, e2_stream_delayed;  
 
-shift_reg_width #(.shift(`E2_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2(clk, e2_stream, e2_stream_delayed);
+//////////////////////////////////////////////////////////////// LATENCY BLOCK BECAUSE SIMULATION STRUGGLES
+shift_reg_width #(.shift(`FORWARD_NTT_1024_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2_0(clk, e2_stream, e2_stream_0);
+shift_reg_width #(.shift(`FORWARD_NTT_1024_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2_1(clk, e2_stream_0, e2_stream_1);
+shift_reg_width #(.shift(`COEF_MULT_2), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2_2(clk, e2_stream_1, e2_stream_delayed);
+
+
+
+////////////////////////////////////////////////////////////////
 
 wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] INTT_ty_out;
 wire INTT_ty_out_valid;
-/*
+/* TODO: HALF THE THROUGHPUT OF THIS INTT, BECAUSE YOU CAN AFFORD IT
 Burst_into_stream #(
 .INPUT_WIDTH((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)), 
 .OUTPUT_WIDTH((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE>>1)), 
@@ -227,7 +234,7 @@ Burst_into_stream #(
 (clk, internal_reset, ty_out, temp_e2_data_valid_buffer, stream_valid_e2, ty_half_out);
 
 NTT_incomplete #(.DIRECTION("INVERSE")) INTT_256 (clk,internal_reset, ty_half_out,ty_half_valid, INTT_ty_out_valid, INTT_ty_out);*/
-NTT_incomplete #(.DIRECTION("INVERSE")) INTT_256 (clk,internal_reset, ty_out,ty_valid, INTT_ty_out_valid, INTT_ty_out); //Stalls 2/3 of the time OPTIMIZATION: reduce
+NTT_incomplete #(.DIRECTION("INVERSE")) INTT_256 (clk,internal_reset, ty_out,ty_valid_out_coef[0], INTT_ty_out_valid, INTT_ty_out); //Stalls 2/3 of the time OPTIMIZATION: reduce
 
 //------------------------MU calculation
 reg [(`MODULUS_WIDTH+2)-1:0] v_to_be_reduced [0:`COEF_PER_CLOCK_CYCLE-1];

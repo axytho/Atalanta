@@ -35,19 +35,22 @@ reduction_tail_ntt #(.ADDED_WIDTH(2)) reduc (clk, accumulator_chosen, data_out);
 reg [(`SHAKE_COUNTER_SIZE<<(`LOG_N-`LOG_COEF_PER_CC))-1:0] input_counter;
 reg [(1<<(`LOG_N-`LOG_COEF_PER_CC))-1:0] output_counter;
 
+reg counter_reached_ready_point;
 wire acc_valid;
-assign acc_valid = ~(output_counter ==0) || (input_counter == ((`SMALL_K-1)<<(`LOG_N-`LOG_COEF_PER_CC)));
+assign acc_valid = ~(output_counter ==0) || counter_reached_ready_point;
+reg reduction_valid;
 
-shift_reg_data_valid #(`REDUCTION_LATENCY+1) shift_instance_3 (clk, acc_valid, data_valid_out);
-//`REDUCTION_LATENCY+1 instead of just `REDUCTION_LATENCY because we select accumulator_chosen
+shift_reg_data_valid #(`REDUCTION_LATENCY) shift_instance_3 (clk, reduction_valid, data_valid_out);
 always @(posedge clk) begin
     accumulator_chosen <= accumulator[output_counter];
+    reduction_valid <= acc_valid;
+    counter_reached_ready_point <= (input_counter == ((`SMALL_K-1)<<(`LOG_N-`LOG_COEF_PER_CC)));
  end
 generate
 genvar i;
 for (i=0;i<`NTT_DIV_BY_RING;i=i+1) begin
     always @(posedge clk) begin
-        if (rst) begin
+        if (rst || (acc_valid && output_counter==i) ) begin
             accumulator[i] <= 0;
         end else if (data_valid && (input_counter[(`LOG_N-`LOG_COEF_PER_CC)-1:0])==i) begin
             accumulator[i] <= accumulator[i] + data_in;
