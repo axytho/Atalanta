@@ -33,6 +33,7 @@ module Burst_into_stream #(parameter INPUT_WIDTH = 1024, parameter OUTPUT_WIDTH 
 
 // DATA_VALID delay
 
+
 // assert output_burst = (BURST_SIZE*INPUT_WIDTH/OUTPUT_WIDTH);
 reg [$clog2(OUTPUT_BURST)-1:0] output_counter = 0;
 reg [$clog2(BURST_SIZE)-1:0] input_counter;
