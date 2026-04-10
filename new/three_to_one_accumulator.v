@@ -38,7 +38,8 @@ reg [(1<<(`LOG_N-`LOG_COEF_PER_CC))-1:0] output_counter;
 wire acc_valid;
 assign acc_valid = ~(output_counter ==0) || (input_counter == ((`SMALL_K-1)<<(`LOG_N-`LOG_COEF_PER_CC)));
 
-shift_reg_data_valid #(`REDUCTION_LATENCY) shift_instance_3 (clk, acc_valid, data_valid_out);  
+shift_reg_data_valid #(`REDUCTION_LATENCY+1) shift_instance_3 (clk, acc_valid, data_valid_out);
+//`REDUCTION_LATENCY+1 instead of just `REDUCTION_LATENCY because we select accumulator_chosen
 always @(posedge clk) begin
     accumulator_chosen <= accumulator[output_counter];
  end

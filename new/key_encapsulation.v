@@ -51,8 +51,7 @@ Burst_into_stream #(
 .INPUT_WIDTH((`INPUT_WIDTH_CLUSTER_MESSAGE)), 
 .OUTPUT_WIDTH(`INPUT_WIDTH_CLUSTER_MESSAGE>>(`LOG_N-`LOG_COEF_PER_CC)), 
 .BURST_SIZE(`BURST_SIZE_DIV_BY_3), 
-.OUTPUT_BURST((`BURST_SIZE_DIV_BY_3<<(`LOG_N-`LOG_COEF_PER_CC))), 
-.CYCLES_PER_OUTPUT_LOG((`LOG_N-`LOG_COEF_PER_CC))
+.OUTPUT_BURST((`BURST_SIZE_DIV_BY_3<<(`LOG_N-`LOG_COEF_PER_CC)))
 ) Burst_message
 (clk, internal_reset, message_in_512, data_valid_out_SHA_512, data_empty, message_stream);
 
@@ -67,8 +66,7 @@ Burst_into_stream #(
 .INPUT_WIDTH((`SHA_512_OUTPUT/2)), 
 .OUTPUT_WIDTH(`K_WIDTH), 
 .BURST_SIZE(`BURST_SIZE_DIV_BY_3), 
-.OUTPUT_BURST((`BURST_SIZE_DIV_BY_3<<(`LOG_N-`LOG_COEF_PER_CC))), 
-.CYCLES_PER_OUTPUT_LOG((`LOG_N-`LOG_COEF_PER_CC))
+.OUTPUT_BURST((`BURST_SIZE_DIV_BY_3<<(`LOG_N-`LOG_COEF_PER_CC))) 
 ) Burst_K
 (clk, internal_reset, K, data_valid_out_SHA_512, stream_valid_K, K_stream);
 
@@ -78,8 +76,7 @@ Burst_into_stream #(
 .INPUT_WIDTH((`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE*`SMALL_K)), 
 .OUTPUT_WIDTH((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)), 
 .BURST_SIZE(`BURST_SIZE_DIV_BY_3), 
-.OUTPUT_BURST(((`BURST_SIZE_DIV_BY_3*`SMALL_K)<<(`LOG_N-`LOG_COEF_PER_CC))), //ends up being 24, which makes sense
-.CYCLES_PER_OUTPUT_LOG((`LOG_N-`LOG_COEF_PER_CC))
+.OUTPUT_BURST(((`BURST_SIZE_DIV_BY_3*`SMALL_K)<<(`LOG_N-`LOG_COEF_PER_CC))) //ends up being 24, which makes sense
 ) Burst_ciphertext
 (clk, internal_reset, public_key[`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE*`SMALL_K-1:0], data_valid, stream_valid_t, t_stream);
 
@@ -143,8 +140,7 @@ Burst_into_stream #(
 .INPUT_WIDTH((`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE)), 
 .OUTPUT_WIDTH((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)), 
 .BURST_SIZE(`BURST_SIZE), 
-.OUTPUT_BURST((`BURST_SIZE<<(`LOG_N-`LOG_COEF_PER_CC))), //ends up being 24, which makes sense, has to match t
-.CYCLES_PER_OUTPUT_LOG((`LOG_N-`LOG_COEF_PER_CC))
+.OUTPUT_BURST((`BURST_SIZE<<(`LOG_N-`LOG_COEF_PER_CC))) //ends up being 24, which makes sense, has to match t
 ) Burst_Y
 (clk, internal_reset, sampled_Y_burst, temp_y_data_valid_buffer, stream_valid_y, Y_stream);
 
@@ -210,8 +206,7 @@ Burst_into_stream #(
 .INPUT_WIDTH((`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE)), 
 .OUTPUT_WIDTH((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)), 
 .BURST_SIZE(`BURST_SIZE_DIV_BY_3), 
-.OUTPUT_BURST((`BURST_SIZE_DIV_BY_3<<(`LOG_N-`LOG_COEF_PER_CC))), 
-.CYCLES_PER_OUTPUT_LOG((`LOG_N-`LOG_COEF_PER_CC))
+.OUTPUT_BURST((`BURST_SIZE_DIV_BY_3<<(`LOG_N-`LOG_COEF_PER_CC))) 
 ) Burst_e2
 (clk, internal_reset, sampled_e2_burst, temp_e2_data_valid_buffer, stream_valid_e2, e2_stream);
 

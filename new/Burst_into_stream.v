@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module Burst_into_stream #(parameter INPUT_WIDTH = 1024, parameter OUTPUT_WIDTH =256, parameter BURST_SIZE= 6, parameter OUTPUT_BURST = 24, parameter CYCLES_PER_OUTPUT_LOG = 2) (
+module Burst_into_stream #(parameter INPUT_WIDTH = 1024, parameter OUTPUT_WIDTH =256, parameter BURST_SIZE= 6, parameter OUTPUT_BURST = 24) (
     input clk,
     input rst,
     input [INPUT_WIDTH-1:0] data_in,
@@ -30,7 +30,7 @@ module Burst_into_stream #(parameter INPUT_WIDTH = 1024, parameter OUTPUT_WIDTH 
     );
 
 //assert OUTPUT_BURST == NO_OF_OUTPUT_BURSTS << 
-
+localparam CYCLES_PER_OUTPUT = (OUTPUT_BURST/BURST_SIZE);
 // DATA_VALID delay
 
 
@@ -57,7 +57,7 @@ reg [INPUT_WIDTH-1:0] data_valid_SLR [0:BURST_SIZE-1];
 reg [OUTPUT_WIDTH-1:0] data_out_reg;
 always @(posedge clk) begin
     data_valid_out_reg <= data_valid_out_until_counter;
-    data_out_reg <= data_valid_SLR[(output_counter>>(CYCLES_PER_OUTPUT_LOG))][OUTPUT_WIDTH-1:0];
+    data_out_reg <= data_valid_SLR[(output_counter/(CYCLES_PER_OUTPUT))][OUTPUT_WIDTH-1:0];
     valid_rising_edge_reg <= (~data_valid_reg & data_valid);
 end
 assign data_valid_out_until_counter = ~(output_counter == 0) || valid_rising_edge_reg;
@@ -86,7 +86,7 @@ for (i=0; i<BURST_SIZE; i=i+1) begin
     always @(posedge clk) begin
         if (input_counter==i && data_valid)
             data_valid_SLR[i] <= data_in;
-        else if ((output_counter>>(CYCLES_PER_OUTPUT_LOG))==i && data_valid_out_until_counter)
+        else if ((output_counter/(CYCLES_PER_OUTPUT))==i && data_valid_out_until_counter)
             data_valid_SLR[i] <= data_valid_SLR[i]>>OUTPUT_WIDTH;
         else
             data_valid_SLR[i] <= data_valid_SLR[i];
