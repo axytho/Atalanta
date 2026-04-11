@@ -70,6 +70,17 @@ Burst_into_stream #(
 ) Burst_K
 (clk, internal_reset, K, data_valid_out_SHA_512, stream_valid_K, K_stream);
 
+wire [`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE*`SMALL_K-1:0] t_normal, t_reversed;
+assign t_normal = public_key[`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE*`SMALL_K-1:0];
+//bit_reversal of t_stream
+generate
+genvar index_of_t, iterator_k;
+for (iterator_k=0; iterator_k<(`SMALL_K); iterator_k=iterator_k+1) begin
+    for (index_of_t=0; index_of_t<(`NTT_POLYNOMIAL_SIZE>>`REDUCED_POLYNOMIAL_DEPTH); index_of_t=index_of_t+1) begin
+        assign t_reversed[iterator_k*`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE+2*`MODULUS_WIDTH*bit_inverse(index_of_t[`LOG_N_BAILEY_NTT-1:0])+:2*`MODULUS_WIDTH] = t_normal[iterator_k*`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE+2*`MODULUS_WIDTH*index_of_t[`LOG_N_BAILEY_NTT-1:0]+:2*`MODULUS_WIDTH];
+    end
+end
+endgenerate
 
 wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] t_stream;  
 Burst_into_stream #(
@@ -78,7 +89,9 @@ Burst_into_stream #(
 .BURST_SIZE(`BURST_SIZE_DIV_BY_3), 
 .OUTPUT_BURST(((`BURST_SIZE_DIV_BY_3*`SMALL_K)<<(`LOG_N-`LOG_COEF_PER_CC))) //ends up being 24, which makes sense
 ) Burst_ciphertext
-(clk, internal_reset, public_key[`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE*`SMALL_K-1:0], data_valid, stream_valid_t, t_stream);
+(clk, internal_reset, t_reversed, data_valid, stream_valid_t, t_stream);
+
+
 
 
 burst_spacing #(
@@ -168,6 +181,17 @@ wire [(`MODULUS_WIDTH)-1:0] twiddles [0:(`COEF_PER_CLOCK_CYCLE>>`REDUCED_POLYNOM
 wire data_valid_twiddle;
 
 shift_reg_data_valid #(`FORWARD_NTT_1024_LATENCY-1) shift_instance_3 (clk, stream_valid_y, data_valid_twiddle);  
+
+function [`LOG_N_BAILEY_NTT-1:0] bit_inverse;//TODO: FIX TO DEAL WITH KYBER PARAMETERS
+ input [`LOG_N_BAILEY_NTT-1:0] normal_order;
+ integer index_bitreverse;
+ begin
+     for(index_bitreverse=0; index_bitreverse<(`LOG_N_BAILEY_NTT); index_bitreverse=index_bitreverse+1) begin
+        bit_inverse[index_bitreverse] = normal_order[`LOG_N_BAILEY_NTT - 1-index_bitreverse];
+     end
+ end
+endfunction
+
 generate
 genvar i;
 for (i=0; i<(`COEF_PER_CLOCK_CYCLE>>`REDUCED_POLYNOMIAL_DEPTH); i=i+1) begin
