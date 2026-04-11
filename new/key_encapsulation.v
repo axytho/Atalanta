@@ -55,7 +55,7 @@ Burst_into_stream #(
 ) Burst_message
 (clk, internal_reset, message_in_512, data_valid_out_SHA_512, data_empty, message_stream);
 
-shift_reg_width #(.shift(`MESSAGE_LATENCY-`BURST_LATENCY), .width((`INPUT_WIDTH_CLUSTER_MESSAGE>>(`LOG_N-`LOG_COEF_PER_CC)))) shift_mu (clk, message_stream, message_for_mu);
+shift_reg_width #(.shift(`MESSAGE_LATENCY), .width((`INPUT_WIDTH_CLUSTER_MESSAGE>>(`LOG_N-`LOG_COEF_PER_CC)))) shift_mu (clk, message_stream, message_for_mu);
 
 wire [`SHA_512_OUTPUT/2-1:0] K, r, r_burst;  
 
@@ -215,7 +215,7 @@ wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] e2_stream_0,e2_stream_1, e2_st
 //////////////////////////////////////////////////////////////// LATENCY BLOCK BECAUSE SIMULATION STRUGGLES
 shift_reg_width #(.shift(`FORWARD_NTT_1024_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2_0(clk, e2_stream, e2_stream_0);
 shift_reg_width #(.shift(`FORWARD_NTT_1024_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2_1(clk, e2_stream_0, e2_stream_1);
-shift_reg_width #(.shift(`COEF_MULT_2), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2_2(clk, e2_stream_1, e2_stream_delayed);
+shift_reg_width #(.shift(`COEF_MULT_2+`ACCUMULATOR_LATENCY+`CAPTURE_R_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2_2(clk, e2_stream_1, e2_stream_delayed);
 
 
 
