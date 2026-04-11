@@ -32,8 +32,8 @@ module three_to_one_accumulator(
 reg [`MODULUS_WIDTH+2-1:0] accumulator [0:`NTT_DIV_BY_RING-1];
 reg [`MODULUS_WIDTH+2-1:0] accumulator_chosen;
 reduction_tail_ntt #(.ADDED_WIDTH(2)) reduc (clk, accumulator_chosen, data_out);
-reg [(`SHAKE_COUNTER_SIZE<<(`LOG_N-`LOG_COEF_PER_CC))-1:0] input_counter;
-reg [(1<<(`LOG_N-`LOG_COEF_PER_CC))-1:0] output_counter;
+reg [$clog2(`SHAKE_COUNTER_SIZE<<(`LOG_N-`LOG_COEF_PER_CC))-1:0] input_counter;
+reg [((`LOG_N-`LOG_COEF_PER_CC))-1:0] output_counter;
 
 reg counter_reached_ready_point;
 wire acc_valid;
