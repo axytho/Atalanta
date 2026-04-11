@@ -72,7 +72,7 @@ Burst_into_stream #(
 
 wire [`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE*`SMALL_K-1:0] t_normal, t_reversed;
 assign t_normal = public_key[`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE*`SMALL_K-1:0];
-//bit_reversal of t_stream
+//bit_reversal of t_stream VERY IMPORTANT NOTE: OUR NTT KEEPS THE POLYNOMIAL IN NORMAL ORDER, THEREFORE T MUST BE BITINVERSED
 generate
 genvar index_of_t, iterator_k;
 for (iterator_k=0; iterator_k<(`SMALL_K); iterator_k=iterator_k+1) begin
@@ -262,7 +262,8 @@ NTT_incomplete #(.DIRECTION("INVERSE")) INTT_256 (clk,internal_reset, ty_out,ty_
 
 //------------------------MU calculation
 reg [(`MODULUS_WIDTH+2)-1:0] v_to_be_reduced [0:`COEF_PER_CLOCK_CYCLE-1];
-wire [(`MODULUS_WIDTH+2)-1:0] v [0:`COEF_PER_CLOCK_CYCLE-1];
+wire [(2*`MODULUS_WIDTH)-1:0] v_shifted_plus_half_modulus [0:`COEF_PER_CLOCK_CYCLE-1];
+
 wire [(`D_V*`COEF_PER_CLOCK_CYCLE)-1:0] c_2;
 generate
 genvar mu;
@@ -274,8 +275,11 @@ for (mu=0; mu<`COEF_PER_CLOCK_CYCLE; mu=mu+1) begin
             v_to_be_reduced[mu] <= INTT_ty_out[mu*`MODULUS_WIDTH+:`MODULUS_WIDTH] + e2_stream_delayed[mu*`MODULUS_WIDTH+:`MODULUS_WIDTH];
         end
     end
+    //assign v_shifted_plus_half_modulus[mu] = (v_to_be_reduced[mu]<<`D_V) + (`MODULUS/2);
+    assign v_shifted_plus_half_modulus[mu] = (v_to_be_reduced[mu]<<`D_V);
+
     //tail_reduction #(.ADDED_WIDTH(2)) reduc_mu(clk, v_to_be_reduced[mu], v[mu]); 
-    Xing_and_Li_compress #(.COMPRESS_WIDTH(`D_V)) Xis_masterpiece_barrett (clk, {6'b0 ,v_to_be_reduced[mu], 4'b0}, c_2[mu*`D_V+:`D_V], );
+    Xing_and_Li_compress #(.COMPRESS_WIDTH(`D_V)) Xis_masterpiece_barrett (clk, v_shifted_plus_half_modulus[mu], c_2[mu*`D_V+:`D_V]);
 end
 endgenerate
 shift_reg_width #(.shift(`TOTAL_LATENCY_ENCRYPTION-`MESSAGE_LATENCY-`COMPRESS_LATENCY-`ADDITION_LATENCY), .width((`D_V*`COEF_PER_CLOCK_CYCLE))) shift_c2_out (clk, c_2, ciphertext[(`D_U*`COEF_PER_CLOCK_CYCLE)+(`D_V*`COEF_PER_CLOCK_CYCLE)-1:(`D_U*`COEF_PER_CLOCK_CYCLE)]);

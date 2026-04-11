@@ -11,8 +11,7 @@
 module Xing_and_Li_compress #(parameter COMPRESS_WIDTH=10) (
 	input clk,
 	input [23:0] c,
-	output reg [COMPRESS_WIDTH-1:0] d,
-	output reg [10:0] q
+	output reg [COMPRESS_WIDTH-1:0] q
 );
 
 wire [11:0] c0;
@@ -24,6 +23,8 @@ reg [12:0] sum;
 reg [14:0] p_mux;
 reg [14:0] diff;
 reg [12:0] diff2;
+reg [11:0] d;
+
 wire [12:0] diff2p;
 reg [10:0] sum_r1, sum_r2, sum_r3;
 reg [2:0] delta_r2, delta_r3;
