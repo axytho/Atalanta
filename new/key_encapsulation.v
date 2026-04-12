@@ -46,7 +46,7 @@ wire [`INPUT_WIDTH_CLUSTER_MESSAGE-1:0] message_in_512;
 wire [(`INPUT_WIDTH_CLUSTER_MESSAGE>>(`LOG_N-`LOG_COEF_PER_CC))-1:0] message_for_mu;
 wire [(`INPUT_WIDTH_CLUSTER_MESSAGE>>(`LOG_N-`LOG_COEF_PER_CC))-1:0] message_stream;
 wire data_empty;
-shift_reg_width #(.shift(`ROUNDS_OF_KECCAK), .width(`INPUT_WIDTH_CLUSTER_MESSAGE)) shift_message_in_512 (clk, message, message_in_512);
+constant_delay_buffer #(.shift(`ROUNDS_OF_KECCAK), .width(`INPUT_WIDTH_CLUSTER_MESSAGE)) shift_message_in_512 (clk, message, message_in_512);
 Burst_into_stream #(
 .INPUT_WIDTH((`INPUT_WIDTH_CLUSTER_MESSAGE)), 
 .OUTPUT_WIDTH(`INPUT_WIDTH_CLUSTER_MESSAGE>>(`LOG_N-`LOG_COEF_PER_CC)), 
@@ -55,7 +55,7 @@ Burst_into_stream #(
 ) Burst_message
 (clk, internal_reset, message_in_512, data_valid_out_SHA_512, data_empty, message_stream);
 
-shift_reg_width #(.shift(`MESSAGE_LATENCY), .width((`INPUT_WIDTH_CLUSTER_MESSAGE>>(`LOG_N-`LOG_COEF_PER_CC)))) shift_mu (clk, message_stream, message_for_mu);
+constant_delay_buffer #(.shift(`MESSAGE_LATENCY), .width((`INPUT_WIDTH_CLUSTER_MESSAGE>>(`LOG_N-`LOG_COEF_PER_CC)))) shift_mu (clk, message_stream, message_for_mu);
 
 wire [`SHA_512_OUTPUT/2-1:0] K, r, r_burst;  
 
@@ -157,19 +157,20 @@ Burst_into_stream #(
 ) Burst_Y
 (clk, internal_reset, sampled_Y_burst, temp_y_data_valid_buffer, stream_valid_y, Y_stream);
 
-wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] t_stream_0, t_stream_1, t_stream_2;  
+wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] t_stream_0, t_stream_1, t_stream_1_one_half, t_stream_2;  
 
 //////////////////////////////////////////////////////////////// LATENCY BLOCK BECAUSE SIMULATION STRUGGLES
-shift_reg_width #(.shift(4*`ROUNDS_OF_KECCAK), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_t_0(clk, t_stream, t_stream_0);
-shift_reg_width #(.shift(4*`ROUNDS_OF_KECCAK), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_t_1(clk, t_stream_0, t_stream_1);
-shift_reg_width #(.shift(3*`ROUNDS_OF_KECCAK+`BURST_LATENCY+`CAPTURE_R_LATENCY+`SAMPLE_POLY_CBD_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_t_2(clk, t_stream_1, t_stream_2);
-shift_reg_width #(.shift(`FORWARD_NTT_1024_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_t_3(clk, t_stream_2, t_stream_delayed);
+constant_delay_buffer #(.shift(4*`ROUNDS_OF_KECCAK), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_t_0(clk, t_stream, t_stream_0);
+constant_delay_buffer #(.shift(4*`ROUNDS_OF_KECCAK), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_t_1(clk, t_stream_0, t_stream_1);
+constant_delay_buffer #(.shift(3*`ROUNDS_OF_KECCAK), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_t_1_one_half(clk, t_stream_1, t_stream_1_one_half);
+constant_delay_buffer #(.shift(`BURST_LATENCY+`CAPTURE_R_LATENCY+`SAMPLE_POLY_CBD_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_t_2(clk, t_stream_1_one_half, t_stream_2);
+constant_delay_buffer #(.shift(`FORWARD_NTT_1024_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_t_3(clk, t_stream_2, t_stream_delayed);
 
 ////////////////////////////////////////////////////////////////
 
 
 
-shift_reg_width #(.shift(`TOTAL_LATENCY_ENCRYPTION), .width(`K_WIDTH)) shift_1(clk, K_stream, K_output);
+constant_delay_buffer #(.shift(`TOTAL_LATENCY_ENCRYPTION), .width(`K_WIDTH)) shift_1(clk, K_stream, K_output);
 shift_reg_data_valid #(`TOTAL_LATENCY_ENCRYPTION) shift_instance_2 (clk, stream_valid_K, data_valid_out);  
 
 wire y_valid_out;
@@ -237,9 +238,9 @@ Burst_into_stream #(
 wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] e2_stream_0,e2_stream_1, e2_stream_delayed;  
 
 //////////////////////////////////////////////////////////////// LATENCY BLOCK BECAUSE SIMULATION STRUGGLES
-shift_reg_width #(.shift(`FORWARD_NTT_1024_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2_0(clk, e2_stream, e2_stream_0);
-shift_reg_width #(.shift(`FORWARD_NTT_1024_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2_1(clk, e2_stream_0, e2_stream_1);
-shift_reg_width #(.shift(`COEF_MULT_2+`ACCUMULATOR_LATENCY+`CAPTURE_R_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2_2(clk, e2_stream_1, e2_stream_delayed);
+constant_delay_buffer #(.shift(`FORWARD_NTT_1024_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2_0(clk, e2_stream, e2_stream_0);
+constant_delay_buffer #(.shift(`FORWARD_NTT_1024_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2_1(clk, e2_stream_0, e2_stream_1);
+constant_delay_buffer #(.shift(`COEF_MULT_2+`ACCUMULATOR_LATENCY+`CAPTURE_R_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2_2(clk, e2_stream_1, e2_stream_delayed);
 
 
 
@@ -282,7 +283,7 @@ for (mu=0; mu<`COEF_PER_CLOCK_CYCLE; mu=mu+1) begin
     Xing_and_Li_compress #(.COMPRESS_WIDTH(`D_V)) Xis_masterpiece_barrett (clk, v_shifted_plus_half_modulus[mu], c_2[mu*`D_V+:`D_V]);
 end
 endgenerate
-shift_reg_width #(.shift(`TOTAL_LATENCY_ENCRYPTION-`MESSAGE_LATENCY-`COMPRESS_LATENCY-`ADDITION_LATENCY), .width((`D_V*`COEF_PER_CLOCK_CYCLE))) shift_c2_out (clk, c_2, ciphertext[(`D_U*`COEF_PER_CLOCK_CYCLE)+(`D_V*`COEF_PER_CLOCK_CYCLE)-1:(`D_U*`COEF_PER_CLOCK_CYCLE)]);
+constant_delay_buffer #(.shift(`TOTAL_LATENCY_ENCRYPTION-`MESSAGE_LATENCY-`COMPRESS_LATENCY-`ADDITION_LATENCY), .width((`D_V*`COEF_PER_CLOCK_CYCLE))) shift_c2_out (clk, c_2, ciphertext[(`D_U*`COEF_PER_CLOCK_CYCLE)+(`D_V*`COEF_PER_CLOCK_CYCLE)-1:(`D_U*`COEF_PER_CLOCK_CYCLE)]);
 
 
 endmodule
