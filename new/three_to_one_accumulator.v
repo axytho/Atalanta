@@ -29,11 +29,11 @@ module three_to_one_accumulator(
     output [`MODULUS_WIDTH-1:0] data_out
 
     );
-reg [`MODULUS_WIDTH+2-1:0] accumulator [0:`NTT_DIV_BY_RING-1];
+reg [`MODULUS_WIDTH+2-1:0] accumulator [0:`ONE_THIRD_KECCAK-1];
 reg [`MODULUS_WIDTH+2-1:0] accumulator_chosen;
 reduction_tail_ntt #(.ADDED_WIDTH(2)) reduc (clk, accumulator_chosen, data_out);
-reg [$clog2(`SHAKE_COUNTER_SIZE<<(`LOG_N-`LOG_COEF_PER_CC))-1:0] input_counter;
-reg [((`LOG_N-`LOG_COEF_PER_CC))-1:0] output_counter;
+reg [`LOG_ROUNDS_OF_KECCAK-1:0] input_counter;
+reg [$clog2(`ONE_THIRD_KECCAK)-1:0] output_counter;
 
 reg counter_reached_ready_point;
 wire acc_valid;
@@ -44,15 +44,15 @@ shift_reg_data_valid #(`REDUCTION_LATENCY) shift_instance_3 (clk, reduction_vali
 always @(posedge clk) begin
     accumulator_chosen <= accumulator[output_counter];
     reduction_valid <= acc_valid;
-    counter_reached_ready_point <= (input_counter == ((`SMALL_K-1)<<(`LOG_N-`LOG_COEF_PER_CC)));
+    counter_reached_ready_point <= (input_counter == (`ROUNDS_OF_KECCAK-`ONE_THIRD_KECCAK));
  end
 generate
 genvar i;
-for (i=0;i<`NTT_DIV_BY_RING;i=i+1) begin
+for (i=0;i<`ONE_THIRD_KECCAK;i=i+1) begin
     always @(posedge clk) begin
         if (rst || (acc_valid && output_counter==i) ) begin
             accumulator[i] <= 0;
-        end else if (data_valid && (input_counter[(`LOG_N-`LOG_COEF_PER_CC)-1:0])==i) begin
+        end else if (data_valid && ({input_counter[`LOG_ROUNDS_OF_KECCAK-1:(`LOG_N-`LOG_COEF_PER_CC)]/(`SMALL_K),input_counter[(`LOG_N-`LOG_COEF_PER_CC)-1:0]})==i) begin
             accumulator[i] <= accumulator[i] + data_in;
         end else begin
             accumulator[i] <= accumulator[i];
@@ -65,7 +65,7 @@ always @(posedge clk) begin
     if (rst) begin
         input_counter <= 0;
     end else if (data_valid) begin
-        if (input_counter == (`SMALL_K<<(`LOG_N-`LOG_COEF_PER_CC))-1) begin
+        if (input_counter == (`ROUNDS_OF_KECCAK)-1) begin
             input_counter <= 0; 
         end else begin
             input_counter <= input_counter + 1;  
@@ -80,7 +80,7 @@ always @(posedge clk) begin
     if (rst) begin
         output_counter <= 0;
     end else if (acc_valid) begin
-        if (output_counter == `NTT_DIV_BY_RING-1)
+        if (output_counter == `ONE_THIRD_KECCAK-1)
             output_counter <= 0; 
         else
             output_counter <= output_counter + 1;    

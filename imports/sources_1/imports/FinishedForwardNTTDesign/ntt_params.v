@@ -49,7 +49,7 @@
 
 
 //NTT hardware-specific user-defined parameters
-`define COEF_PER_CLOCK_CYCLE       (1 << 5)
+`define COEF_PER_CLOCK_CYCLE       (1 << 7)
 
 //DESIGN DETERMINED parameters (TO BE PARAMETRIZED)
 `define JEWEL_REGISTERS 2 //PERHAPS PARAMETRIZE AS 

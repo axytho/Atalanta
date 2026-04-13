@@ -210,9 +210,10 @@ wire ty_valid, ty_half_valid;
 shift_reg_data_valid #((`ACCUMULATOR_LATENCY+`MULTIPLIER_LATENCY+`REDUCTION_LATENCY+`MULTIPLIER_LATENCY+1+`REDUCTION_LATENCY)) shift_instance_4 (clk, y_valid_out, ty_valid);  
 
 
+///////////////////////////////////////////////////////E2 BLOCK///////////////////////////////////////////////////////////
 wire e2_valid;
 wire [`OUTPUT_WIDTH_CLUSTER_SHAKE_256-1:0] e2_burst_out;
-SHAKE_256 #(.BURST_SIZE(`BURST_SIZE_DIV_BY_3)) e2_generation (clk, internal_reset, {8'd6, r}, data_valid_out_SHA_512_spaced, e2_valid,e2_burst_out);
+SHAKE_256 #(.BURST_SIZE(`BURST_SIZE_DIV_BY_3)) e2_generation (clk, internal_reset, {8'd6, r_burst}, data_valid_out_SHA_512, e2_valid,e2_burst_out);
 wire [`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE-1:0] sampled_e2_burst;
 generate
 genvar e2;
@@ -236,11 +237,13 @@ Burst_into_stream #(
 (clk, internal_reset, sampled_e2_burst, temp_e2_data_valid_buffer, stream_valid_e2, e2_stream);
 
 wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] e2_stream_0,e2_stream_1, e2_stream_delayed;  
+///////////////////////////////////////////////////////E2 BLOCK///////////////////////////////////////////////////////////
+
 
 //////////////////////////////////////////////////////////////// LATENCY BLOCK BECAUSE SIMULATION STRUGGLES
 constant_delay_buffer #(.shift(`FORWARD_NTT_1024_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2_0(clk, e2_stream, e2_stream_0);
 constant_delay_buffer #(.shift(`FORWARD_NTT_1024_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2_1(clk, e2_stream_0, e2_stream_1);
-constant_delay_buffer #(.shift(`COEF_MULT_2+`ACCUMULATOR_LATENCY+`CAPTURE_R_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2_2(clk, e2_stream_1, e2_stream_delayed);
+constant_delay_buffer #(.shift(`COEF_MULT_2+`ACCUMULATOR_LATENCY+`CAPTURE_R_LATENCY+`BURST_LATENCY), .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e2_2(clk, e2_stream_1, e2_stream_delayed);
 
 
 
@@ -277,7 +280,7 @@ for (mu=0; mu<`COEF_PER_CLOCK_CYCLE; mu=mu+1) begin
         end
     end
     //assign v_shifted_plus_half_modulus[mu] = (v_to_be_reduced[mu]<<`D_V) + (`MODULUS/2);
-    assign v_shifted_plus_half_modulus[mu] = (v_to_be_reduced[mu]<<`D_V);
+    assign v_shifted_plus_half_modulus[mu] = {{(`MODULUS_WIDTH-`D_V-2){1'b0}},v_to_be_reduced[mu], {`D_V{1'b0}}};
 
     //tail_reduction #(.ADDED_WIDTH(2)) reduc_mu(clk, v_to_be_reduced[mu], v[mu]); 
     Xing_and_Li_compress #(.COMPRESS_WIDTH(`D_V)) Xis_masterpiece_barrett (clk, v_shifted_plus_half_modulus[mu], c_2[mu*`D_V+:`D_V]);
