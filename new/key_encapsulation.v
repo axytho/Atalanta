@@ -167,11 +167,11 @@ wire rho_delay_valid, data_valid_out_rho_spaced;
 
 
 constant_delay_buffer #(
-.shift(11*`ROUNDS_OF_KECCAK+2*`BURST_LATENCY+`CAPTURE_R_LATENCY+`SAMPLE_POLY_CBD_LATENCY+`FORWARD_NTT_1024_LATENCY
--`BURST_LATENCY-`CAPTURE_R_LATENCY-5*`ROUNDS_OF_KECCAK-(`FIRST_BITONIC_LATENCY+`SECOND_BITONIC_LATENCY+2)-`BURST_LATENCY), 
+.shift(`RHO_LATENCY), 
 .width((`SHA_512_OUTPUT/2))) shift_rho_first(clk, rho, rho_delay);
 
-shift_reg_data_valid #(10*`ROUNDS_OF_KECCAK) shift_instance_rho (clk, data_valid, rho_delay_valid);  
+shift_reg_data_valid #(`RHO_LATENCY)
+ shift_instance_rho (clk, data_valid, rho_delay_valid);  
 
 burst_spacing #(
 .INPUT_WIDTH(`SHA_512_OUTPUT/2),
@@ -217,9 +217,9 @@ wire A_gen_valid_0,A_gen_valid_1, A_gen_valid_2 ;
 
 
 wire [`OUTPUT_WIDTH_CLUSTER_SHAKE_128-1:0] SHAKE_128_out, SHAKE_128_out_1, SHAKE_128_out_2;
-SHAKE_128 #(.BURST_SIZE(`BURST_SIZE)) A_generation_0 (clk, internal_reset, {8'd0,input_counter_rho, rho_delay_cap}, data_valid_out_rho_reg, A_gen_valid_0,SHAKE_128_out);
-SHAKE_128 #(.BURST_SIZE(`BURST_SIZE)) A_generation_1 (clk, internal_reset, {8'd1,input_counter_rho, rho_delay_cap}, data_valid_out_rho_reg,A_gen_valid_1 ,SHAKE_128_out_1);
-SHAKE_128 #(.BURST_SIZE(`BURST_SIZE)) A_generation_2 (clk, internal_reset, {8'd2,input_counter_rho, rho_delay_cap}, data_valid_out_rho_reg,A_gen_valid_2 ,SHAKE_128_out_2);
+SHAKE_128 A_generation_0 (clk, internal_reset, {8'd0,input_counter_rho, rho_delay_cap}, data_valid_out_rho_reg, A_gen_valid_0,SHAKE_128_out);
+SHAKE_128 A_generation_1 (clk, internal_reset, {8'd1,input_counter_rho, rho_delay_cap}, data_valid_out_rho_reg,A_gen_valid_1 ,SHAKE_128_out_1);
+SHAKE_128 A_generation_2 (clk, internal_reset, {8'd2,input_counter_rho, rho_delay_cap}, data_valid_out_rho_reg,A_gen_valid_2 ,SHAKE_128_out_2);
 
 wire sample_valid_0, sample_valid_1, sample_valid_2;
 
@@ -417,6 +417,9 @@ Burst_into_stream #(
 (clk, internal_reset, sampled_e1_burst_2, temp_e1_data_valid_buffer_2, stream_valid_e1_2, e1_stream_2);
 
 wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] e1_stream_delayed_0, e1_stream_delayed_1, e1_stream_delayed_2;
+wire [(`SMALL_K*`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] e1_stream_delayed;
+assign e1_stream_delayed = {e1_stream_delayed_2, e1_stream_delayed_1, e1_stream_delayed_0};
+
 constant_delay_buffer #(.shift(2*`FORWARD_NTT_1024_LATENCY+`COEF_MULT_2+`ACCUMULATOR_LATENCY+`CAPTURE_R_LATENCY+`BURST_LATENCY), 
 .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e1_0(clk, e1_stream_2, e1_stream_delayed_0);
 constant_delay_buffer #(.shift(2*`FORWARD_NTT_1024_LATENCY+`COEF_MULT_2+`ACCUMULATOR_LATENCY+`CAPTURE_R_LATENCY+`BURST_LATENCY), 
@@ -436,6 +439,8 @@ constant_delay_buffer #(.shift(`COEF_MULT_2+`ACCUMULATOR_LATENCY+`CAPTURE_R_LATE
 ////////////////////////////////////////////////////////////////
 
 wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] INTT_ty_out;
+wire [(`SMALL_K*`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] INTT_A_out;
+
 wire INTT_ty_out_valid;
 wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] INTT_A_0_out;
 wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] INTT_A_1_out;
@@ -448,7 +453,7 @@ NTT_incomplete #(.DIRECTION("INVERSE")) INTT_256_A_0 (clk,internal_reset, Ay0,ty
 NTT_incomplete #(.DIRECTION("INVERSE")) INTT_256_A_1 (clk,internal_reset, Ay1,ty_valid_out_coef[0], INTT_A_1_out_valid, INTT_A_1_out); //Stalls 2/3 of the time OPTIMIZATION: reduce
 NTT_incomplete #(.DIRECTION("INVERSE")) INTT_256_A_2 (clk,internal_reset, Ay2,ty_valid_out_coef[0], INTT_A_2_out_valid, INTT_A_2_out); //Stalls 2/3 of the time OPTIMIZATION: reduce by using one INTT
 
-
+assign INTT_A_out = {INTT_A_2_out, INTT_A_1_out, INTT_A_0_out};
 /* TODO: HALF THE THROUGHPUT OF THIS INTT, BECAUSE YOU CAN AFFORD IT
 Burst_into_stream #(
 .INPUT_WIDTH((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)), 
@@ -492,9 +497,9 @@ wire [(2*`MODULUS_WIDTH)-1:0] u_shifted_plus_half_modulus [0:`SMALL_K*`COEF_PER_
 wire [(`D_U*`SMALL_K*`COEF_PER_CLOCK_CYCLE)-1:0] c_1;
 generate
 genvar u_index;
-for (u_index=0; u_index<`COEF_PER_CLOCK_CYCLE; u_index=u_index+1) begin
+for (u_index=0; u_index<`COEF_PER_CLOCK_CYCLE*`SMALL_K; u_index=u_index+1) begin
     always @(posedge clk) begin
-        u_to_be_reduced[u_index] <= INTT_ty_out[u_index*`MODULUS_WIDTH+:`MODULUS_WIDTH] + e2_stream_delayed[u_index*`MODULUS_WIDTH+:`MODULUS_WIDTH];
+        u_to_be_reduced[u_index] <= INTT_A_out[u_index*`MODULUS_WIDTH+:`MODULUS_WIDTH] + e1_stream_delayed[u_index*`MODULUS_WIDTH+:`MODULUS_WIDTH];
 
     end
     //assign v_shifted_plus_half_modulus[mu] = (v_to_be_reduced[mu]<<`D_V) + (`MODULUS/2);
@@ -521,8 +526,8 @@ endgenerate
 
 
 
-constant_delay_buffer #(.shift(1), .width((`D_V*`COEF_PER_CLOCK_CYCLE))) shift_c2_out (clk, c_2, ciphertext[(`D_U*`COEF_PER_CLOCK_CYCLE)+(`D_V*`COEF_PER_CLOCK_CYCLE)-1:(`D_U*`COEF_PER_CLOCK_CYCLE)]);
-constant_delay_buffer #(.shift(1), .width((`SMALL_K*`D_U*`COEF_PER_CLOCK_CYCLE))) shift_c1_out (clk, c_1, ciphertext[(`D_U*`COEF_PER_CLOCK_CYCLE)-1:0]);
+constant_delay_buffer #(.shift(`TOTAL_LATENCY_ENCRYPTION-`MESSAGE_LATENCY-`COMPRESS_LATENCY-`ADDITION_LATENCY), .width((`D_V*`COEF_PER_CLOCK_CYCLE))) shift_c2_out (clk, c_2, ciphertext[(`D_U*`COEF_PER_CLOCK_CYCLE)+(`D_V*`COEF_PER_CLOCK_CYCLE)-1:(`D_U*`COEF_PER_CLOCK_CYCLE)]);
+constant_delay_buffer #(.shift(`TOTAL_LATENCY_ENCRYPTION-`MESSAGE_LATENCY-`COMPRESS_LATENCY-`ADDITION_LATENCY), .width((`SMALL_K*`D_U*`COEF_PER_CLOCK_CYCLE))) shift_c1_out (clk, c_1, ciphertext[(`SMALL_K*`D_U*`COEF_PER_CLOCK_CYCLE)-1:0]);
 
 
 endmodule
