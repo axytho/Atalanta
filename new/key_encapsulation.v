@@ -217,9 +217,9 @@ wire A_gen_valid_0,A_gen_valid_1, A_gen_valid_2 ;
 
 
 wire [`OUTPUT_WIDTH_CLUSTER_SHAKE_128-1:0] SHAKE_128_out, SHAKE_128_out_1, SHAKE_128_out_2;
-SHAKE_128 A_generation_0 (clk, internal_reset, {8'd0,input_counter_rho, rho_delay_cap}, data_valid_out_rho_reg, A_gen_valid_0,SHAKE_128_out);
-SHAKE_128 A_generation_1 (clk, internal_reset, {8'd1,input_counter_rho, rho_delay_cap}, data_valid_out_rho_reg,A_gen_valid_1 ,SHAKE_128_out_1);
-SHAKE_128 A_generation_2 (clk, internal_reset, {8'd2,input_counter_rho, rho_delay_cap}, data_valid_out_rho_reg,A_gen_valid_2 ,SHAKE_128_out_2);
+SHAKE_128 A_generation_0 (clk, internal_reset, {8'd0,input_counter_rho_reg, rho_delay_cap}, data_valid_out_rho_reg, A_gen_valid_0,SHAKE_128_out);
+SHAKE_128 A_generation_1 (clk, internal_reset, {8'd1,input_counter_rho_reg, rho_delay_cap}, data_valid_out_rho_reg,A_gen_valid_1 ,SHAKE_128_out_1);
+SHAKE_128 A_generation_2 (clk, internal_reset, {8'd2,input_counter_rho_reg, rho_delay_cap}, data_valid_out_rho_reg,A_gen_valid_2 ,SHAKE_128_out_2);
 
 wire sample_valid_0, sample_valid_1, sample_valid_2;
 
@@ -524,10 +524,10 @@ endgenerate
 
 
 
-
-
-constant_delay_buffer #(.shift(`TOTAL_LATENCY_ENCRYPTION-`MESSAGE_LATENCY-`COMPRESS_LATENCY-`ADDITION_LATENCY), .width((`D_V*`COEF_PER_CLOCK_CYCLE))) shift_c2_out (clk, c_2, ciphertext[(`D_U*`COEF_PER_CLOCK_CYCLE)+(`D_V*`COEF_PER_CLOCK_CYCLE)-1:(`D_U*`COEF_PER_CLOCK_CYCLE)]);
-constant_delay_buffer #(.shift(`TOTAL_LATENCY_ENCRYPTION-`MESSAGE_LATENCY-`COMPRESS_LATENCY-`ADDITION_LATENCY), .width((`SMALL_K*`D_U*`COEF_PER_CLOCK_CYCLE))) shift_c1_out (clk, c_1, ciphertext[(`SMALL_K*`D_U*`COEF_PER_CLOCK_CYCLE)-1:0]);
+assign ciphertext[(`SMALL_K*`D_U*`COEF_PER_CLOCK_CYCLE)+(`D_V*`COEF_PER_CLOCK_CYCLE)-1:(`SMALL_K*`D_U*`COEF_PER_CLOCK_CYCLE)] = c_2;
+assign ciphertext[(`SMALL_K*`D_U*`COEF_PER_CLOCK_CYCLE)-1:0] = c_1;
+//constant_delay_buffer #(.shift(`TOTAL_LATENCY_ENCRYPTION-`MESSAGE_LATENCY-`COMPRESS_LATENCY-`ADDITION_LATENCY), .width((`D_V*`COEF_PER_CLOCK_CYCLE))) shift_c2_out (clk, c_2, ciphertext[(`SMALL_K*`D_U*`COEF_PER_CLOCK_CYCLE)+(`D_V*`COEF_PER_CLOCK_CYCLE)-1:(`SMALL_K*`D_U*`COEF_PER_CLOCK_CYCLE)]);
+//constant_delay_buffer #(.shift(`TOTAL_LATENCY_ENCRYPTION-`MESSAGE_LATENCY-`COMPRESS_LATENCY-`ADDITION_LATENCY), .width((`SMALL_K*`D_U*`COEF_PER_CLOCK_CYCLE))) shift_c1_out (clk, c_1, ciphertext[(`SMALL_K*`D_U*`COEF_PER_CLOCK_CYCLE)-1:0]);
 
 
 endmodule
