@@ -1,24 +1,15 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 04/04/2026 02:40:54 PM
-// Design Name: 
-// Module Name: key_encapsulation
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
+//Copyright 2026 Jonas Bertels COSIC KU Leuven
+//Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"),
+// to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or 
+//sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+//The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+//FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+//DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE 
+//OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+//////////////////////////////////////////////////////////////////////////////////
 `include "parameters.v" 
 `include "ntt_params.v"
 
@@ -71,6 +62,16 @@ Burst_into_stream #(
 (clk, internal_reset, K, data_valid_out_SHA_512, stream_valid_K, K_stream);
 
 wire [`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE*`SMALL_K-1:0] t_normal, t_reversed;
+wire [`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE*`SMALL_K-1:0] A_normal, A_reversed;
+//A_2_burst_reversed
+wire [(`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE)-1:0] A_0_burst, A_1_burst, A_2_burst;
+wire [(`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE)-1:0] A_0_burst_reversed, A_1_burst_reversed, A_2_burst_reversed;
+assign A_normal = {A_2_burst,A_1_burst,A_0_burst};
+assign A_2_burst_reversed = A_reversed[`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE*2+:`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE];
+assign A_1_burst_reversed = A_reversed[`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE*1+:`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE];
+assign A_0_burst_reversed = A_reversed[`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE*0+:`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE];
+
+
 assign t_normal = public_key[`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE*`SMALL_K-1:0];
 //bit_reversal of t_stream VERY IMPORTANT NOTE: OUR NTT KEEPS THE POLYNOMIAL IN NORMAL ORDER, THEREFORE T MUST BE BITINVERSED
 generate
@@ -78,6 +79,7 @@ genvar index_of_t, iterator_k;
 for (iterator_k=0; iterator_k<(`SMALL_K); iterator_k=iterator_k+1) begin
     for (index_of_t=0; index_of_t<(`NTT_POLYNOMIAL_SIZE>>`REDUCED_POLYNOMIAL_DEPTH); index_of_t=index_of_t+1) begin
         assign t_reversed[iterator_k*`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE+2*`MODULUS_WIDTH*bit_inverse(index_of_t[`LOG_N_BAILEY_NTT-1:0])+:2*`MODULUS_WIDTH] = t_normal[iterator_k*`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE+2*`MODULUS_WIDTH*index_of_t[`LOG_N_BAILEY_NTT-1:0]+:2*`MODULUS_WIDTH];
+        assign A_reversed[iterator_k*`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE+2*`MODULUS_WIDTH*bit_inverse(index_of_t[`LOG_N_BAILEY_NTT-1:0])+:2*`MODULUS_WIDTH] = A_normal[iterator_k*`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE+2*`MODULUS_WIDTH*index_of_t[`LOG_N_BAILEY_NTT-1:0]+:2*`MODULUS_WIDTH];
     end
 end
 endgenerate
@@ -162,7 +164,13 @@ Burst_into_stream #(
 assign rho = public_key[`INPUT_WIDTH_CLUSTER_PK-1:`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE*`SMALL_K];
 wire [`SHA_512_OUTPUT/2-1:0] rho_delay, rho_spaced;
 wire rho_delay_valid, data_valid_out_rho_spaced;
-constant_delay_buffer #(.shift(10*`ROUNDS_OF_KECCAK-`BURST_LATENCY), .width((`SHA_512_OUTPUT/2))) shift_rho_first(clk, rho, rho_delay);
+
+
+constant_delay_buffer #(
+.shift(11*`ROUNDS_OF_KECCAK+2*`BURST_LATENCY+`CAPTURE_R_LATENCY+`SAMPLE_POLY_CBD_LATENCY+`FORWARD_NTT_1024_LATENCY
+-`BURST_LATENCY-`CAPTURE_R_LATENCY-5*`ROUNDS_OF_KECCAK-(`FIRST_BITONIC_LATENCY+`SECOND_BITONIC_LATENCY+2)-`BURST_LATENCY), 
+.width((`SHA_512_OUTPUT/2))) shift_rho_first(clk, rho, rho_delay);
+
 shift_reg_data_valid #(10*`ROUNDS_OF_KECCAK) shift_instance_rho (clk, data_valid, rho_delay_valid);  
 
 burst_spacing #(
@@ -214,7 +222,8 @@ SHAKE_128 #(.BURST_SIZE(`BURST_SIZE)) A_generation_1 (clk, internal_reset, {8'd1
 SHAKE_128 #(.BURST_SIZE(`BURST_SIZE)) A_generation_2 (clk, internal_reset, {8'd2,input_counter_rho, rho_delay_cap}, data_valid_out_rho_reg,A_gen_valid_2 ,SHAKE_128_out_2);
 
 wire sample_valid_0, sample_valid_1, sample_valid_2;
-wire [(`MODULUS_WIDTH*`NTT_POLYNOMIAL_SIZE)-1:0] A_0_burst, A_1_burst, A_2_burst;
+
+
 sample_ntt sample_0 (clk, SHAKE_128_out,A_gen_valid_0 ,sample_valid_0 , A_0_burst);
 sample_ntt sample_1 (clk, SHAKE_128_out_1,A_gen_valid_1 ,sample_valid_1 , A_1_burst);
 sample_ntt sample_2 (clk, SHAKE_128_out_2,A_gen_valid_2 ,sample_valid_2 , A_2_burst);
@@ -227,7 +236,7 @@ Burst_into_stream #(
 .BURST_SIZE(`BURST_SIZE), 
 .OUTPUT_BURST((`BURST_SIZE<<(`LOG_N-`LOG_COEF_PER_CC))) //ends up being 24, which makes sense, has to match t
 ) Burst_A_0
-(clk, internal_reset, A_0_burst, sample_valid_0, stream_valid_A_0, A_0_stream);
+(clk, internal_reset, A_0_burst_reversed, sample_valid_0, stream_valid_A_0, A_0_stream);
 
 wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] A_1_stream;  
 wire stream_valid_A_1;
@@ -237,7 +246,7 @@ Burst_into_stream #(
 .BURST_SIZE(`BURST_SIZE), 
 .OUTPUT_BURST((`BURST_SIZE<<(`LOG_N-`LOG_COEF_PER_CC))) //ends up being 24, which makes sense, has to match t
 ) Burst_A_1
-(clk, internal_reset, A_1_burst, sample_valid_1, stream_valid_A_1, A_1_stream);
+(clk, internal_reset, A_1_burst_reversed, sample_valid_1, stream_valid_A_1, A_1_stream);
 
 wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] A_2_stream;  
 wire stream_valid_A_2;
@@ -247,7 +256,7 @@ Burst_into_stream #(
 .BURST_SIZE(`BURST_SIZE), 
 .OUTPUT_BURST((`BURST_SIZE<<(`LOG_N-`LOG_COEF_PER_CC))) //ends up being 24, which makes sense, has to match t
 ) Burst_A_2
-(clk, internal_reset, A_2_burst, sample_valid_2, stream_valid_A_2, A_2_stream);
+(clk, internal_reset, A_2_burst_reversed, sample_valid_2, stream_valid_A_2, A_2_stream);
 
 
 //////////////////////////////////////////////////////////////// LATENCY BLOCK BECAUSE SIMULATION STRUGGLES
@@ -320,7 +329,7 @@ three_to_one_accumulator three_to_one_accumulator_inst_A2 (clk, internal_reset, 
 end
 endgenerate
 wire ty_valid, ty_half_valid;
-shift_reg_data_valid #((`ACCUMULATOR_LATENCY+`MULTIPLIER_LATENCY+`REDUCTION_LATENCY+`MULTIPLIER_LATENCY+1+`REDUCTION_LATENCY)) shift_instance_4 (clk, y_valid_out, ty_valid);  
+shift_reg_data_valid #((`ACCUMULATOR_LATENCY+`MULTIPLIER_LATENCY+`REDUCTION_LATENCY+`MULTIPLIER_LATENCY+1+`REDUCTION_LATENCY)) shift_instance_4 (clk, y_valid_out, ty_valid); //ty_valid also denotes A valid; 
 
 
 ///////////////////////////////////////////////////////E2 BLOCK///////////////////////////////////////////////////////////
@@ -349,7 +358,6 @@ Burst_into_stream #(
 ) Burst_e2
 (clk, internal_reset, sampled_e2_burst, temp_e2_data_valid_buffer, stream_valid_e2, e2_stream);
 
-wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] e2_stream_0,e2_stream_1, e2_stream_delayed;  
 ///////////////////////////////////////////////////////E2 BLOCK///////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////E1 BLOCK///////////////////////////////////////////////////////////
@@ -429,6 +437,18 @@ constant_delay_buffer #(.shift(`COEF_MULT_2+`ACCUMULATOR_LATENCY+`CAPTURE_R_LATE
 
 wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] INTT_ty_out;
 wire INTT_ty_out_valid;
+wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] INTT_A_0_out;
+wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] INTT_A_1_out;
+wire [(`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] INTT_A_2_out;
+wire INTT_A_0_out_valid;
+wire INTT_A_1_out_valid;
+wire INTT_A_2_out_valid;
+
+NTT_incomplete #(.DIRECTION("INVERSE")) INTT_256_A_0 (clk,internal_reset, Ay0,ty_valid_out_coef[0], INTT_A_0_out_valid, INTT_A_0_out); //Stalls 2/3 of the time OPTIMIZATION: reduce
+NTT_incomplete #(.DIRECTION("INVERSE")) INTT_256_A_1 (clk,internal_reset, Ay1,ty_valid_out_coef[0], INTT_A_1_out_valid, INTT_A_1_out); //Stalls 2/3 of the time OPTIMIZATION: reduce
+NTT_incomplete #(.DIRECTION("INVERSE")) INTT_256_A_2 (clk,internal_reset, Ay2,ty_valid_out_coef[0], INTT_A_2_out_valid, INTT_A_2_out); //Stalls 2/3 of the time OPTIMIZATION: reduce by using one INTT
+
+
 /* TODO: HALF THE THROUGHPUT OF THIS INTT, BECAUSE YOU CAN AFFORD IT
 Burst_into_stream #(
 .INPUT_WIDTH((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)), 
@@ -464,7 +484,45 @@ for (mu=0; mu<`COEF_PER_CLOCK_CYCLE; mu=mu+1) begin
     Xing_and_Li_compress #(.COMPRESS_WIDTH(`D_V)) Xis_masterpiece_barrett (clk, v_shifted_plus_half_modulus[mu], c_2[mu*`D_V+:`D_V]);
 end
 endgenerate
-constant_delay_buffer #(.shift(`TOTAL_LATENCY_ENCRYPTION-`MESSAGE_LATENCY-`COMPRESS_LATENCY-`ADDITION_LATENCY), .width((`D_V*`COEF_PER_CLOCK_CYCLE))) shift_c2_out (clk, c_2, ciphertext[(`D_U*`COEF_PER_CLOCK_CYCLE)+(`D_V*`COEF_PER_CLOCK_CYCLE)-1:(`D_U*`COEF_PER_CLOCK_CYCLE)]);
+
+//------------------------U calculation
+reg [(`MODULUS_WIDTH+1)-1:0] u_to_be_reduced [0:`SMALL_K*`COEF_PER_CLOCK_CYCLE-1];
+wire [(2*`MODULUS_WIDTH)-1:0] u_shifted_plus_half_modulus [0:`SMALL_K*`COEF_PER_CLOCK_CYCLE-1];
+
+wire [(`D_U*`SMALL_K*`COEF_PER_CLOCK_CYCLE)-1:0] c_1;
+generate
+genvar u_index;
+for (u_index=0; u_index<`COEF_PER_CLOCK_CYCLE; u_index=u_index+1) begin
+    always @(posedge clk) begin
+        u_to_be_reduced[u_index] <= INTT_ty_out[u_index*`MODULUS_WIDTH+:`MODULUS_WIDTH] + e2_stream_delayed[u_index*`MODULUS_WIDTH+:`MODULUS_WIDTH];
+
+    end
+    //assign v_shifted_plus_half_modulus[mu] = (v_to_be_reduced[mu]<<`D_V) + (`MODULUS/2);
+    assign u_shifted_plus_half_modulus[u_index] = {{(`MODULUS_WIDTH-`D_U-1){1'b0}},u_to_be_reduced[u_index], {`D_U{1'b0}}};
+
+    //tail_reduction #(.ADDED_WIDTH(2)) reduc_mu(clk, v_to_be_reduced[mu], v[mu]); 
+    Xing_and_Li_compress #(.COMPRESS_WIDTH(`D_U)) Xis_masterpiece_barrett (clk, u_shifted_plus_half_modulus[u_index], c_1[u_index*`D_U+:`D_U]);
+end
+endgenerate
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+constant_delay_buffer #(.shift(1), .width((`D_V*`COEF_PER_CLOCK_CYCLE))) shift_c2_out (clk, c_2, ciphertext[(`D_U*`COEF_PER_CLOCK_CYCLE)+(`D_V*`COEF_PER_CLOCK_CYCLE)-1:(`D_U*`COEF_PER_CLOCK_CYCLE)]);
+constant_delay_buffer #(.shift(1), .width((`SMALL_K*`D_U*`COEF_PER_CLOCK_CYCLE))) shift_c1_out (clk, c_1, ciphertext[(`D_U*`COEF_PER_CLOCK_CYCLE)-1:0]);
 
 
 endmodule
