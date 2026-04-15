@@ -18,7 +18,8 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-
+`include "parameters.v" 
+`include "ntt_params.v"
 
 module convert_to_sample_ntt_input #(parameter INDEX_WIDTH=9, parameter INDEX = 0) (
     input clk,
@@ -30,7 +31,7 @@ reg [`MODULUS_WIDTH + INDEX_WIDTH+1-1:0 ]  result_reg;
 always @(posedge clk) begin
     result_reg[`MODULUS_WIDTH-1:0] <= data_in;
     result_reg[`MODULUS_WIDTH + INDEX_WIDTH-1:`MODULUS_WIDTH] <= INDEX;
-    result_reg[`MODULUS_WIDTH + INDEX_WIDTH+1-1] <= (data_in<`MODULUS);
+    result_reg[`MODULUS_WIDTH + INDEX_WIDTH+1-1] <= ~(data_in<`MODULUS);
 end
 
 assign data_out = result_reg;
