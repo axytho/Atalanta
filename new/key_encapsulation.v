@@ -217,9 +217,9 @@ wire A_gen_valid_0,A_gen_valid_1, A_gen_valid_2 ;
 
 
 wire [`OUTPUT_WIDTH_CLUSTER_SHAKE_128-1:0] SHAKE_128_out, SHAKE_128_out_1, SHAKE_128_out_2;
-SHAKE_128 A_generation_0 (clk, internal_reset, {8'd0,input_counter_rho_reg, rho_delay_cap}, data_valid_out_rho_reg, A_gen_valid_0,SHAKE_128_out);
-SHAKE_128 A_generation_1 (clk, internal_reset, {8'd1,input_counter_rho_reg, rho_delay_cap}, data_valid_out_rho_reg,A_gen_valid_1 ,SHAKE_128_out_1);
-SHAKE_128 A_generation_2 (clk, internal_reset, {8'd2,input_counter_rho_reg, rho_delay_cap}, data_valid_out_rho_reg,A_gen_valid_2 ,SHAKE_128_out_2);
+SHAKE_128 A_generation_0 (clk, internal_reset, {input_counter_rho_reg,8'd0, rho_delay_cap}, data_valid_out_rho_reg, A_gen_valid_0,SHAKE_128_out);
+SHAKE_128 A_generation_1 (clk, internal_reset, {input_counter_rho_reg,8'd1, rho_delay_cap}, data_valid_out_rho_reg,A_gen_valid_1 ,SHAKE_128_out_1);
+SHAKE_128 A_generation_2 (clk, internal_reset, {input_counter_rho_reg,8'd2, rho_delay_cap}, data_valid_out_rho_reg,A_gen_valid_2 ,SHAKE_128_out_2);
 
 wire sample_valid_0, sample_valid_1, sample_valid_2;
 
@@ -421,9 +421,9 @@ wire [(`SMALL_K*`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE)-1:0] e1_stream_delayed;
 assign e1_stream_delayed = {e1_stream_delayed_2, e1_stream_delayed_1, e1_stream_delayed_0};
 
 constant_delay_buffer #(.shift(2*`FORWARD_NTT_1024_LATENCY+`COEF_MULT_2+`ACCUMULATOR_LATENCY+`CAPTURE_R_LATENCY+`BURST_LATENCY), 
-.width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e1_0(clk, e1_stream_2, e1_stream_delayed_0);
+.width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e1_0(clk, e1_stream_0, e1_stream_delayed_0);
 constant_delay_buffer #(.shift(2*`FORWARD_NTT_1024_LATENCY+`COEF_MULT_2+`ACCUMULATOR_LATENCY+`CAPTURE_R_LATENCY+`BURST_LATENCY), 
-.width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e1_1(clk, e1_stream_2, e1_stream_delayed_1);
+.width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e1_1(clk, e1_stream_1, e1_stream_delayed_1);
 constant_delay_buffer #(.shift(2*`FORWARD_NTT_1024_LATENCY+`COEF_MULT_2+`ACCUMULATOR_LATENCY+`CAPTURE_R_LATENCY+`BURST_LATENCY), 
 .width((`MODULUS_WIDTH*`COEF_PER_CLOCK_CYCLE))) shift_e1_2(clk, e1_stream_2, e1_stream_delayed_2);
 ///////////////////////////////////////////////////////E1 BLOCK///////////////////////////////////////////////////////////
